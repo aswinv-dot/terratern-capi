@@ -1,5 +1,19 @@
 const { fetchRecentStatusChanges } = require("./metabase");
-const { sendToMetaCAPI, normalizePhone, hash } = require("./capi");
+const { sendToMetaCAPI } = require("./capi");
+const crypto = require("crypto");
+
+function hash(value) {
+  if (!value) return null;
+  return crypto.createHash("sha256").update(value.toString().trim().toLowerCase()).digest("hex");
+}
+
+function normalizePhone(countryCode, mobile) {
+  if (!mobile) return null;
+  let m = mobile.toString().replace(/\D/g, "");
+  let cc = (countryCode || "91").toString().replace(/\D/g, "");
+  if (m.length > 10) return m;
+  return cc + m;
+}
 const { isAlreadySent, markAsSent } = require("./dedup");
 const { TRACKED_STATUSES } = require("./config");
 
