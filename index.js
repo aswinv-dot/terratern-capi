@@ -9,8 +9,10 @@ function hash(value) {
 
 function normalizePhone(countryCode, mobile) {
   if (!mobile) return null;
-  let m = mobile.toString().replace(/\D/g, "");
-  let cc = (countryCode || "91").toString().replace(/\D/g, "");
+  let m = mobile.toString().replace(/\D/g, "").trim();
+  let cc = (countryCode || "91").toString().replace(/\D/g, "").trim();
+  if (!cc) cc = "91";
+  // Already has country code prefixed
   if (m.length > 10) return m;
   return cc + m;
 }
@@ -44,6 +46,9 @@ async function run() {
     const normalizedPhone = normalizePhone(lead.country_code, lead.mobile);
     const phoneHash = hash(normalizedPhone);
     const emailHash = hash(lead.email);
+
+    // Debug — remove after confirming
+    console.log(`[Debug] lead ${lead.lead_id} | phone: ${normalizedPhone} | email: ${lead.email} | phoneHash: ${phoneHash?.slice(0,8)} | emailHash: ${emailHash?.slice(0,8)}`);
 
     toSend.push({
       leadId:    lead.lead_id,
