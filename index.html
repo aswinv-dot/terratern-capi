@@ -1,0 +1,902 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>TerraTern CAPI Dashboard</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap');
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  :root {
+    --bg: #0a0a0f;
+    --surface: #13131a;
+    --border: #1e1e2e;
+    --border-light: #2a2a3e;
+    --text: #e2e2f0;
+    --text-muted: #6b6b8a;
+    --text-dim: #3d3d5c;
+    --accent: #6c63ff;
+    --accent-glow: rgba(108,99,255,0.15);
+    --green: #22c55e;
+    --green-bg: rgba(34,197,94,0.1);
+    --yellow: #eab308;
+    --yellow-bg: rgba(234,179,8,0.1);
+    --blue: #3b82f6;
+    --blue-bg: rgba(59,130,246,0.1);
+    --purple: #a855f7;
+    --purple-bg: rgba(168,85,247,0.1);
+    --red: #ef4444;
+    --red-bg: rgba(239,68,68,0.1);
+    --mono: 'JetBrains Mono', monospace;
+  }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Inter', sans-serif;
+    min-height: 100vh;
+    font-size: 14px;
+  }
+
+  /* ── Header ── */
+  .header {
+    border-bottom: 1px solid var(--border);
+    padding: 0 24px;
+    height: 56px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    position: sticky;
+    top: 0;
+    background: var(--bg);
+    z-index: 100;
+  }
+
+  .header-left {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+
+  .logo-dot {
+    width: 8px; height: 8px;
+    background: var(--accent);
+    border-radius: 50%;
+    box-shadow: 0 0 8px var(--accent);
+    animation: pulse 2s infinite;
+  }
+
+  @keyframes pulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.4; }
+  }
+
+  .logo-text {
+    font-size: 13px;
+    font-weight: 600;
+    letter-spacing: 0.05em;
+    color: var(--text);
+  }
+
+  .logo-sub {
+    font-size: 11px;
+    color: var(--text-muted);
+    font-family: var(--mono);
+  }
+
+  .header-right {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .status-badge {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 4px 10px;
+    border-radius: 20px;
+    font-size: 11px;
+    font-weight: 500;
+    font-family: var(--mono);
+  }
+
+  .status-badge.connected {
+    background: var(--green-bg);
+    color: var(--green);
+    border: 1px solid rgba(34,197,94,0.2);
+  }
+
+  .status-badge.disconnected {
+    background: var(--red-bg);
+    color: var(--red);
+    border: 1px solid rgba(239,68,68,0.2);
+  }
+
+  .status-dot {
+    width: 6px; height: 6px;
+    border-radius: 50%;
+    background: currentColor;
+  }
+
+  /* ── Layout ── */
+  .container { max-width: 1200px; margin: 0 auto; padding: 24px; }
+
+  /* ── Tabs ── */
+  .tabs {
+    display: flex;
+    gap: 2px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 4px;
+    width: fit-content;
+    margin-bottom: 28px;
+  }
+
+  .tab {
+    padding: 7px 18px;
+    border-radius: 7px;
+    border: none;
+    background: transparent;
+    color: var(--text-muted);
+    font-size: 13px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.15s;
+    font-family: 'Inter', sans-serif;
+  }
+
+  .tab.active {
+    background: var(--accent);
+    color: white;
+  }
+
+  .tab:hover:not(.active) { color: var(--text); }
+
+  /* ── Panels ── */
+  .panel { display: none; }
+  .panel.active { display: block; }
+
+  /* ── Stats Row ── */
+  .stats-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+    gap: 12px;
+    margin-bottom: 24px;
+  }
+
+  .stat-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 16px;
+  }
+
+  .stat-label {
+    font-size: 11px;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    margin-bottom: 8px;
+    font-weight: 500;
+  }
+
+  .stat-value {
+    font-size: 26px;
+    font-weight: 700;
+    font-family: var(--mono);
+    color: var(--text);
+    line-height: 1;
+  }
+
+  .stat-sub {
+    font-size: 11px;
+    color: var(--text-muted);
+    margin-top: 4px;
+  }
+
+  /* ── Filters ── */
+  .filters {
+    display: flex;
+    gap: 8px;
+    margin-bottom: 16px;
+    flex-wrap: wrap;
+    align-items: center;
+  }
+
+  .filter-btn {
+    padding: 5px 12px;
+    border-radius: 6px;
+    border: 1px solid var(--border);
+    background: var(--surface);
+    color: var(--text-muted);
+    font-size: 12px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.15s;
+    font-family: 'Inter', sans-serif;
+  }
+
+  .filter-btn.active, .filter-btn:hover {
+    border-color: var(--accent);
+    color: var(--accent);
+    background: var(--accent-glow);
+  }
+
+  .filter-input {
+    padding: 5px 12px;
+    border-radius: 6px;
+    border: 1px solid var(--border);
+    background: var(--surface);
+    color: var(--text);
+    font-size: 12px;
+    font-family: var(--mono);
+    outline: none;
+    width: 200px;
+  }
+
+  .filter-input:focus { border-color: var(--accent); }
+  .filter-input::placeholder { color: var(--text-dim); }
+
+  .refresh-btn {
+    margin-left: auto;
+    padding: 5px 14px;
+    border-radius: 6px;
+    border: 1px solid var(--border);
+    background: var(--surface);
+    color: var(--text-muted);
+    font-size: 12px;
+    cursor: pointer;
+    font-family: 'Inter', sans-serif;
+    transition: all 0.15s;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+
+  .refresh-btn:hover { border-color: var(--accent); color: var(--accent); }
+
+  /* ── Table ── */
+  .table-wrap {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    overflow: hidden;
+  }
+
+  table { width: 100%; border-collapse: collapse; }
+
+  thead tr {
+    border-bottom: 1px solid var(--border);
+    background: rgba(255,255,255,0.02);
+  }
+
+  th {
+    padding: 10px 16px;
+    text-align: left;
+    font-size: 11px;
+    font-weight: 600;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    white-space: nowrap;
+  }
+
+  td {
+    padding: 11px 16px;
+    font-size: 13px;
+    border-bottom: 1px solid var(--border);
+    vertical-align: middle;
+  }
+
+  tr:last-child td { border-bottom: none; }
+  tr:hover td { background: rgba(255,255,255,0.02); }
+
+  .mono { font-family: var(--mono); font-size: 12px; }
+
+  /* ── Event Badges ── */
+  .event-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    padding: 3px 8px;
+    border-radius: 5px;
+    font-size: 11px;
+    font-weight: 600;
+    font-family: var(--mono);
+    white-space: nowrap;
+  }
+
+  .badge-WebinarBooked    { background: var(--blue-bg);   color: var(--blue);   border: 1px solid rgba(59,130,246,0.2); }
+  .badge-WebinarAttended  { background: var(--purple-bg); color: var(--purple); border: 1px solid rgba(168,85,247,0.2); }
+  .badge-CounsellingDone  { background: var(--yellow-bg); color: var(--yellow); border: 1px solid rgba(234,179,8,0.2); }
+  .badge-PaymentScheduled { background: var(--green-bg);  color: var(--green);  border: 1px solid rgba(34,197,94,0.2); }
+  .badge-Purchase         { background: rgba(34,197,94,0.2); color: #4ade80; border: 1px solid rgba(74,222,128,0.3); font-weight: 700; }
+
+  /* ── Empty / Loading ── */
+  .empty-state {
+    text-align: center;
+    padding: 60px 20px;
+    color: var(--text-muted);
+  }
+
+  .empty-icon { font-size: 32px; margin-bottom: 12px; }
+  .empty-title { font-size: 15px; font-weight: 600; color: var(--text); margin-bottom: 6px; }
+  .empty-sub { font-size: 13px; }
+
+  .loading-row td {
+    text-align: center;
+    padding: 40px;
+    color: var(--text-muted);
+  }
+
+  /* ── SQL Setup Panel ── */
+  .setup-section {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 24px;
+    margin-bottom: 16px;
+  }
+
+  .setup-title {
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--text);
+    margin-bottom: 6px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .setup-desc {
+    font-size: 12px;
+    color: var(--text-muted);
+    margin-bottom: 16px;
+    line-height: 1.6;
+  }
+
+  .code-block {
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 16px;
+    font-family: var(--mono);
+    font-size: 12px;
+    color: #a0a0c0;
+    line-height: 1.7;
+    position: relative;
+    overflow-x: auto;
+  }
+
+  .copy-btn {
+    position: absolute;
+    top: 10px; right: 10px;
+    padding: 4px 10px;
+    border-radius: 5px;
+    border: 1px solid var(--border-light);
+    background: var(--surface);
+    color: var(--text-muted);
+    font-size: 11px;
+    cursor: pointer;
+    font-family: 'Inter', sans-serif;
+    transition: all 0.15s;
+  }
+
+  .copy-btn:hover { color: var(--accent); border-color: var(--accent); }
+
+  /* ── Railway Env Panel ── */
+  .env-grid {
+    display: grid;
+    gap: 12px;
+  }
+
+  .env-row {
+    display: grid;
+    grid-template-columns: 200px 1fr;
+    gap: 10px;
+    align-items: center;
+  }
+
+  .env-label {
+    font-family: var(--mono);
+    font-size: 12px;
+    color: var(--accent);
+    font-weight: 500;
+  }
+
+  .env-input {
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 8px 12px;
+    color: var(--text);
+    font-family: var(--mono);
+    font-size: 12px;
+    outline: none;
+    width: 100%;
+    transition: border-color 0.15s;
+  }
+
+  .env-input:focus { border-color: var(--accent); }
+  .env-input::placeholder { color: var(--text-dim); }
+
+  .copy-env-btn {
+    margin-top: 16px;
+    padding: 9px 20px;
+    border-radius: 7px;
+    border: none;
+    background: var(--accent);
+    color: white;
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+    font-family: 'Inter', sans-serif;
+    transition: opacity 0.15s;
+  }
+
+  .copy-env-btn:hover { opacity: 0.85; }
+
+  .env-output {
+    margin-top: 12px;
+    display: none;
+  }
+
+  /* ── Pagination ── */
+  .pagination {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 12px 16px;
+    border-top: 1px solid var(--border);
+    background: var(--surface);
+  }
+
+  .page-info { font-size: 12px; color: var(--text-muted); font-family: var(--mono); }
+
+  .page-btns { display: flex; gap: 6px; }
+
+  .page-btn {
+    padding: 4px 12px;
+    border-radius: 5px;
+    border: 1px solid var(--border);
+    background: transparent;
+    color: var(--text-muted);
+    font-size: 12px;
+    cursor: pointer;
+    font-family: 'Inter', sans-serif;
+    transition: all 0.15s;
+  }
+
+  .page-btn:hover:not(:disabled) { border-color: var(--accent); color: var(--accent); }
+  .page-btn:disabled { opacity: 0.3; cursor: default; }
+
+  /* ── Toast ── */
+  .toast {
+    position: fixed;
+    bottom: 24px; right: 24px;
+    padding: 10px 18px;
+    background: var(--green);
+    color: #000;
+    border-radius: 8px;
+    font-size: 13px;
+    font-weight: 600;
+    transform: translateY(60px);
+    opacity: 0;
+    transition: all 0.25s;
+    z-index: 999;
+  }
+
+  .toast.show { transform: translateY(0); opacity: 1; }
+
+  /* ── Mobile ── */
+  @media (max-width: 768px) {
+    .container { padding: 16px; }
+    .stats-grid { grid-template-columns: repeat(2, 1fr); }
+    .env-row { grid-template-columns: 1fr; }
+    th:nth-child(4), td:nth-child(4),
+    th:nth-child(5), td:nth-child(5) { display: none; }
+    .filter-input { width: 140px; }
+    .header { padding: 0 16px; }
+  }
+</style>
+</head>
+<body>
+
+<div class="header">
+  <div class="header-left">
+    <div class="logo-dot" id="statusDot"></div>
+    <div>
+      <div class="logo-text">TERRATERN · CAPI</div>
+      <div class="logo-sub">Meta Signal Dashboard</div>
+    </div>
+  </div>
+  <div class="header-right">
+    <div class="status-badge disconnected" id="connBadge">
+      <div class="status-dot"></div>
+      <span id="connText">Checking...</span>
+    </div>
+  </div>
+</div>
+
+<div class="container">
+
+  <div class="tabs">
+    <button class="tab active" onclick="switchTab('logs')">Event Logs</button>
+    <button class="tab" onclick="switchTab('setup')">Setup</button>
+  </div>
+
+  <!-- ── LOGS PANEL ── -->
+  <div class="panel active" id="panel-logs">
+
+    <div class="stats-grid" id="statsGrid">
+      <div class="stat-card">
+        <div class="stat-label">Total Sent</div>
+        <div class="stat-value" id="statTotal">—</div>
+        <div class="stat-sub">all time</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">Today</div>
+        <div class="stat-value" id="statToday">—</div>
+        <div class="stat-sub">events fired</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">Purchases</div>
+        <div class="stat-value" id="statPurchase">—</div>
+        <div class="stat-sub">sent to Meta</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">Webinars</div>
+        <div class="stat-value" id="statWebinar">—</div>
+        <div class="stat-sub">attended signals</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">Last Run</div>
+        <div class="stat-value" style="font-size:14px;" id="statLastRun">—</div>
+        <div class="stat-sub">IST</div>
+      </div>
+    </div>
+
+    <div class="filters">
+      <button class="filter-btn active" onclick="filterEvent('all', this)">All</button>
+      <button class="filter-btn" onclick="filterEvent('WebinarBooked', this)">Webinar Booked</button>
+      <button class="filter-btn" onclick="filterEvent('WebinarAttended', this)">Webinar Attended</button>
+      <button class="filter-btn" onclick="filterEvent('CounsellingDone', this)">Counselling Done</button>
+      <button class="filter-btn" onclick="filterEvent('PaymentScheduled', this)">Payment Scheduled</button>
+      <button class="filter-btn" onclick="filterEvent('Purchase', this)">Purchase</button>
+      <input class="filter-input" id="searchInput" placeholder="Search lead ID..." oninput="applyFilters()">
+      <button class="refresh-btn" onclick="loadLogs()">↻ Refresh</button>
+    </div>
+
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>#</th>
+            <th>Lead ID</th>
+            <th>Event</th>
+            <th>Status ID</th>
+            <th>Phone Hash</th>
+            <th>Sent At (IST)</th>
+            <th>Meta Response</th>
+          </tr>
+        </thead>
+        <tbody id="logsBody">
+          <tr class="loading-row"><td colspan="7">Loading events...</td></tr>
+        </tbody>
+      </table>
+      <div class="pagination" id="pagination" style="display:none;">
+        <div class="page-info" id="pageInfo"></div>
+        <div class="page-btns">
+          <button class="page-btn" id="prevBtn" onclick="changePage(-1)">← Prev</button>
+          <button class="page-btn" id="nextBtn" onclick="changePage(1)">Next →</button>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- ── SETUP PANEL ── -->
+  <div class="panel" id="panel-setup">
+
+    <div class="setup-section">
+      <div class="setup-title">📋 Step 1 — Create Supabase Table</div>
+      <div class="setup-desc">Run this SQL in your Supabase project → SQL Editor. Only needed once.</div>
+      <div class="code-block" id="sqlBlock">
+        <button class="copy-btn" onclick="copyCode('sqlBlock')">Copy</button>
+CREATE TABLE capi_events_log (
+  id          bigserial PRIMARY KEY,
+  lead_id     text NOT NULL,
+  status_id   integer NOT NULL,
+  event_name  text NOT NULL,
+  phone_hash  text,
+  meta_response text,
+  sent_at     timestamptz DEFAULT now(),
+  UNIQUE(lead_id, status_id)
+);
+
+-- Index for fast dashboard queries
+CREATE INDEX idx_capi_sent_at ON capi_events_log(sent_at DESC);
+CREATE INDEX idx_capi_event_name ON capi_events_log(event_name);
+      </div>
+    </div>
+
+    <div class="setup-section">
+      <div class="setup-title">🔑 Step 2 — Railway Environment Variables</div>
+      <div class="setup-desc">Paste your keys below. Click "Copy for Railway" to get a formatted output you can paste into Railway's variable editor.</div>
+
+      <div class="env-grid">
+        <div class="env-row">
+          <div class="env-label">METABASE_API_KEY</div>
+          <input class="env-input" id="envMetabase" type="password" placeholder="mb_xxxxxxxxxxxxxxxx">
+        </div>
+        <div class="env-row">
+          <div class="env-label">PIXEL_ID</div>
+          <input class="env-input" id="envPixel" type="text" placeholder="123456789012345">
+        </div>
+        <div class="env-row">
+          <div class="env-label">CAPI_ACCESS_TOKEN</div>
+          <input class="env-input" id="envCapi" type="password" placeholder="EAAxxxxxx...">
+        </div>
+        <div class="env-row">
+          <div class="env-label">SUPABASE_ANON_KEY</div>
+          <input class="env-input" id="envSupabase" type="password" placeholder="eyJhbGci...">
+        </div>
+      </div>
+
+      <button class="copy-env-btn" onclick="copyEnvVars()">Copy for Railway</button>
+
+      <div class="env-output" id="envOutput">
+        <div class="code-block" id="envBlock" style="white-space:pre;"></div>
+      </div>
+    </div>
+
+    <div class="setup-section">
+      <div class="setup-title">🚀 Step 3 — Deploy to Railway</div>
+      <div class="setup-desc">
+        1. Push all Node.js files to a GitHub repo named <span style="color:var(--accent);font-family:var(--mono)">terratern-capi</span><br>
+        2. Go to railway.app → New Project → Deploy from GitHub<br>
+        3. Add the 4 environment variables above in Railway → Variables tab<br>
+        4. Start command: <span style="color:var(--accent);font-family:var(--mono)">node index.js</span><br>
+        5. Watch the Railway logs — you should see the first pull within seconds
+      </div>
+    </div>
+
+    <div class="setup-section">
+      <div class="setup-title">📡 Events Being Tracked</div>
+      <div style="display:grid;gap:8px;margin-top:8px;">
+        <div style="display:flex;justify-content:space-between;align-items:center;padding:8px 12px;background:var(--bg);border-radius:6px;border:1px solid var(--border);">
+          <span class="mono" style="color:var(--text-muted)">Status ID 12, 20, 24</span>
+          <span class="event-badge badge-WebinarBooked">WebinarBooked</span>
+        </div>
+        <div style="display:flex;justify-content:space-between;align-items:center;padding:8px 12px;background:var(--bg);border-radius:6px;border:1px solid var(--border);">
+          <span class="mono" style="color:var(--text-muted)">Status ID 15</span>
+          <span class="event-badge badge-WebinarAttended">WebinarAttended</span>
+        </div>
+        <div style="display:flex;justify-content:space-between;align-items:center;padding:8px 12px;background:var(--bg);border-radius:6px;border:1px solid var(--border);">
+          <span class="mono" style="color:var(--text-muted)">Status ID 13</span>
+          <span class="event-badge badge-CounsellingDone">CounsellingDone</span>
+        </div>
+        <div style="display:flex;justify-content:space-between;align-items:center;padding:8px 12px;background:var(--bg);border-radius:6px;border:1px solid var(--border);">
+          <span class="mono" style="color:var(--text-muted)">Status ID 26</span>
+          <span class="event-badge badge-PaymentScheduled">PaymentScheduled</span>
+        </div>
+        <div style="display:flex;justify-content:space-between;align-items:center;padding:8px 12px;background:var(--bg);border-radius:6px;border:1px solid var(--border);">
+          <span class="mono" style="color:var(--text-muted)">Status ID 8, 17</span>
+          <span class="event-badge badge-Purchase">Purchase</span>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+  const SUPABASE_URL  = "https://otzmitwvvetdzheogtkr.supabase.co";
+  const SUPABASE_KEY  = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im90em1pdHd2dmV0ZHpoZW9ndGtyIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODEyNjAzNTUsImV4cCI6MjA5NjgzNjM1NX0.YQwCTN7cxq0Zo0e66_Kl2yAmN0okWyqpTq-ktgexlig";
+  const PAGE_SIZE     = 50;
+
+  let allLogs    = [];
+  let filtered   = [];
+  let currentPage = 1;
+  let activeFilter = "all";
+
+  // ── Supabase fetch ──
+  async function fetchFromSupabase(query) {
+    const res = await fetch(`${SUPABASE_URL}/rest/v1/${query}`, {
+      headers: {
+        "apikey": SUPABASE_KEY,
+        "Authorization": `Bearer ${SUPABASE_KEY}`,
+        "Content-Type": "application/json"
+      }
+    });
+    if (!res.ok) throw new Error(`Supabase error: ${res.status}`);
+    return res.json();
+  }
+
+  // ── Connection check ──
+  async function checkConnection() {
+    try {
+      await fetchFromSupabase("capi_events_log?limit=1&select=id");
+      setConnected(true);
+    } catch {
+      setConnected(false);
+    }
+  }
+
+  function setConnected(ok) {
+    const badge = document.getElementById("connBadge");
+    const text  = document.getElementById("connText");
+    const dot   = document.getElementById("statusDot");
+    badge.className = "status-badge " + (ok ? "connected" : "disconnected");
+    text.textContent = ok ? "Connected" : "Table not found";
+    dot.style.background = ok ? "var(--green)" : "var(--red)";
+    dot.style.boxShadow  = ok ? "0 0 8px var(--green)" : "0 0 8px var(--red)";
+  }
+
+  // ── Load logs ──
+  async function loadLogs() {
+    document.getElementById("logsBody").innerHTML =
+      `<tr class="loading-row"><td colspan="7">Loading events...</td></tr>`;
+    try {
+      const data = await fetchFromSupabase(
+        "capi_events_log?select=*&order=sent_at.desc&limit=1000"
+      );
+      allLogs = data;
+      updateStats(data);
+      applyFilters();
+      setConnected(true);
+    } catch (e) {
+      document.getElementById("logsBody").innerHTML =
+        `<tr class="loading-row"><td colspan="7" style="color:var(--red)">⚠ Could not load logs. Run the SQL setup first.</td></tr>`;
+      setConnected(false);
+    }
+  }
+
+  // ── Stats ──
+  function updateStats(data) {
+    const today = new Date().toISOString().slice(0, 10);
+    document.getElementById("statTotal").textContent   = data.length;
+    document.getElementById("statToday").textContent   = data.filter(r => r.sent_at?.startsWith(today)).length;
+    document.getElementById("statPurchase").textContent = data.filter(r => r.event_name === "Purchase").length;
+    document.getElementById("statWebinar").textContent  = data.filter(r => r.event_name === "WebinarAttended").length;
+
+    if (data.length > 0) {
+      const last = new Date(data[0].sent_at);
+      document.getElementById("statLastRun").textContent = last.toLocaleTimeString("en-IN", {
+        timeZone: "Asia/Kolkata", hour: "2-digit", minute: "2-digit"
+      });
+    }
+  }
+
+  // ── Filters ──
+  function filterEvent(type, btn) {
+    activeFilter = type;
+    document.querySelectorAll(".filter-btn").forEach(b => b.classList.remove("active"));
+    btn.classList.add("active");
+    currentPage = 1;
+    applyFilters();
+  }
+
+  function applyFilters() {
+    const search = document.getElementById("searchInput").value.trim().toLowerCase();
+    filtered = allLogs.filter(r => {
+      const matchEvent  = activeFilter === "all" || r.event_name === activeFilter;
+      const matchSearch = !search || r.lead_id?.toLowerCase().includes(search);
+      return matchEvent && matchSearch;
+    });
+    renderPage();
+  }
+
+  // ── Render ──
+  function renderPage() {
+    const tbody   = document.getElementById("logsBody");
+    const total   = filtered.length;
+    const pages   = Math.ceil(total / PAGE_SIZE);
+    const start   = (currentPage - 1) * PAGE_SIZE;
+    const slice   = filtered.slice(start, start + PAGE_SIZE);
+
+    if (slice.length === 0) {
+      tbody.innerHTML = `
+        <tr><td colspan="7">
+          <div class="empty-state">
+            <div class="empty-icon">📭</div>
+            <div class="empty-title">No events yet</div>
+            <div class="empty-sub">Events will appear here once the poller starts sending signals to Meta</div>
+          </div>
+        </td></tr>`;
+      document.getElementById("pagination").style.display = "none";
+      return;
+    }
+
+    tbody.innerHTML = slice.map((r, i) => {
+      const idx = start + i + 1;
+      const sentIST = new Date(r.sent_at).toLocaleString("en-IN", {
+        timeZone: "Asia/Kolkata",
+        day: "2-digit", month: "short",
+        hour: "2-digit", minute: "2-digit"
+      });
+      const hash = r.phone_hash ? r.phone_hash.slice(0, 12) + "…" : "—";
+      const meta = r.meta_response ? "✓" : "—";
+      return `
+        <tr>
+          <td class="mono" style="color:var(--text-muted)">${idx}</td>
+          <td class="mono">${r.lead_id}</td>
+          <td><span class="event-badge badge-${r.event_name}">${r.event_name}</span></td>
+          <td class="mono" style="color:var(--text-muted)">${r.status_id}</td>
+          <td class="mono" style="color:var(--text-dim);font-size:11px">${hash}</td>
+          <td class="mono" style="font-size:12px">${sentIST}</td>
+          <td style="color:var(--green);font-size:12px">${meta}</td>
+        </tr>`;
+    }).join("");
+
+    const pagination = document.getElementById("pagination");
+    pagination.style.display = "flex";
+    document.getElementById("pageInfo").textContent =
+      `${start + 1}–${Math.min(start + PAGE_SIZE, total)} of ${total} events`;
+    document.getElementById("prevBtn").disabled = currentPage <= 1;
+    document.getElementById("nextBtn").disabled = currentPage >= pages;
+  }
+
+  function changePage(dir) {
+    currentPage += dir;
+    renderPage();
+    window.scrollTo(0, 0);
+  }
+
+  // ── Tabs ──
+  function switchTab(name) {
+    document.querySelectorAll(".tab").forEach((t, i) => {
+      t.classList.toggle("active", ["logs","setup"][i] === name);
+    });
+    document.querySelectorAll(".panel").forEach(p => p.classList.remove("active"));
+    document.getElementById("panel-" + name).classList.add("active");
+  }
+
+  // ── Copy SQL ──
+  function copyCode(id) {
+    const el = document.getElementById(id);
+    const text = el.innerText.replace("Copy\n", "").trim();
+    navigator.clipboard.writeText(text).then(() => showToast("SQL copied!"));
+  }
+
+  // ── Copy env vars ──
+  function copyEnvVars() {
+    const mb   = document.getElementById("envMetabase").value.trim();
+    const px   = document.getElementById("envPixel").value.trim();
+    const capi = document.getElementById("envCapi").value.trim();
+    const sb   = document.getElementById("envSupabase").value.trim();
+
+    const out = [
+      mb   ? `METABASE_API_KEY=${mb}`   : "METABASE_API_KEY=PASTE_HERE",
+      px   ? `PIXEL_ID=${px}`           : "PIXEL_ID=PASTE_HERE",
+      capi ? `CAPI_ACCESS_TOKEN=${capi}`: "CAPI_ACCESS_TOKEN=PASTE_HERE",
+      sb   ? `SUPABASE_ANON_KEY=${sb}`  : "SUPABASE_ANON_KEY=PASTE_HERE",
+    ].join("\n");
+
+    document.getElementById("envBlock").textContent = out;
+    document.getElementById("envOutput").style.display = "block";
+    navigator.clipboard.writeText(out).then(() => showToast("Copied to clipboard!"));
+  }
+
+  // ── Toast ──
+  function showToast(msg) {
+    const t = document.getElementById("toast");
+    t.textContent = msg;
+    t.classList.add("show");
+    setTimeout(() => t.classList.remove("show"), 2500);
+  }
+
+  // ── Init ──
+  checkConnection();
+  loadLogs();
+  setInterval(loadLogs, 5 * 60 * 1000); // auto-refresh every 5 min
+</script>
+</body>
+</html>
