@@ -1,32 +1,11 @@
 const axios = require("axios");
-const { METABASE_URL, METABASE_API_KEY, METABASE_DATABASE_ID, TRACKED_STATUSES } = require("./config");
-
-const statusIds = Object.keys(TRACKED_STATUSES).join(",");
+const { METABASE_URL, METABASE_API_KEY, METABASE_QUESTION_ID } = require("./config");
 
 async function fetchRecentStatusChanges() {
-  const query = `
-    SELECT 
-      l.id AS lead_id,
-      l.phone,
-      l.email,
-      l.lead_status_id,
-      l.updated_at,
-      l.program
-    FROM leads l
-    WHERE 
-      l.lead_status_id IN (${statusIds})
-      AND l.updated_at >= NOW() - INTERVAL 70 MINUTE
-    ORDER BY l.updated_at DESC
-  `;
-
   try {
     const res = await axios.post(
-      `${METABASE_URL}/api/dataset`,
-      {
-        database: METABASE_DATABASE_ID,
-        type: "native",
-        native: { query },
-      },
+      `${METABASE_URL}/api/card/${METABASE_QUESTION_ID}/query/json`,
+      {},
       {
         headers: {
           "Content-Type": "application/json",
@@ -35,14 +14,10 @@ async function fetchRecentStatusChanges() {
       }
     );
 
-    const rows = res.data?.data?.rows || [];
-    const cols = res.data?.data?.cols?.map((c) => c.name) || [];
+    const rows = res.data || [];
+    console.log(`[Metabase] ✅ Got ${rows.length} rows`);
+    return rows;
 
-    return rows.map((row) => {
-      const obj = {};
-      cols.forEach((col, i) => (obj[col] = row[i]));
-      return obj;
-    });
   } catch (err) {
     console.error("[Metabase] ❌ Query failed:", err.response?.data || err.message);
     return [];
