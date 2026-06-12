@@ -33,11 +33,12 @@ async function run() {
   const toSend = [];
 
   for (const lead of leads) {
+    const leadId = lead.id || lead.lead_id;
     const statusId = Number(lead.lead_status_id);
     const eventName = TRACKED_STATUSES[statusId];
     if (!eventName) continue;
 
-    const alreadySent = await isAlreadySent(lead.lead_id, statusId);
+    const alreadySent = await isAlreadySent(leadId, statusId);
     if (alreadySent) {
       console.log(`[Dedup] Skipping lead ${lead.lead_id} (${eventName}) — already sent`);
       continue;
@@ -48,10 +49,10 @@ async function run() {
     const emailHash = hash(lead.email);
 
     // Debug — remove after confirming
-    console.log(`[Debug] lead ${lead.lead_id} | phone: ${normalizedPhone} | email: ${lead.email} | phoneHash: ${phoneHash?.slice(0,8)} | emailHash: ${emailHash?.slice(0,8)}`);
+    console.log(`[Debug] lead ${leadId} | phone: ${normalizedPhone} | email: ${lead.email} | phoneHash: ${phoneHash?.slice(0,8)} | emailHash: ${emailHash?.slice(0,8)}`);
 
     toSend.push({
-      leadId:    lead.lead_id,
+      leadId,
       eventName,
       eventTime: Math.floor(new Date(lead.updated_at).getTime() / 1000),
       phoneHash,
