@@ -1,38 +1,36 @@
-const fs = require("fs");
-const path = require("path");
+const { createClient } = require("@supabase/supabase-js");
+const { SUPABASE_URL, SUPABASE_ANON_KEY } = require("./config");
 
-const LOG_FILE = path.join(__dirname, "logs", "sent_events.json");
+const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
-function loadLog() {
-  if (!fs.existsSync(LOG_FILE)) return {};
-  try {
-    return JSON.parse(fs.readFileSync(LOG_FILE, "utf8"));
-  } catch {
-    return {};
+async function isAlreadySent(leadId, statusId) {
+  const { data, error } = await supabase
+    .from("capi_events_log")
+    .select("id")
+    .eq("lead_id", leadId)
+    .eq("status_id", statusId)
+    .limit(1);
+
+  if (error) {
+    console.error("[Supabase] isAlreadySent error:", error.message);
+    return false; // Fail open — try to send rather than silently skip
   }
+  return data && data.length > 0;
 }
 
-function saveLog(log) {
-  fs.writeFileSync(LOG_FILE, JSON.stringify(log, null, 2));
-}
+async function markAsSent(leadId, statusId, eventName, phoneHash, metaResponse) {
+  const { error } = await supabase.from("capi_events_log").insert({
+    lead_id: String(leadId),
+    status_id: statusId,
+    event_name: eventName,
+    phone_hash: phoneHash || null,
+    meta_response: metaResponse ? JSON.stringify(metaResponse) : null,
+    sent_at: new Date().toISOString(),
+  });
 
-// Key = leadId + statusId — unique per lead per stage
-function getKey(leadId, statusId) {
-  return `${leadId}_${statusId}`;
-}
-
-function isAlreadySent(leadId, statusId) {
-  const log = loadLog();
-  return !!log[getKey(leadId, statusId)];
-}
-
-function markAsSent(leadId, statusId, eventName) {
-  const log = loadLog();
-  log[getKey(leadId, statusId)] = {
-    eventName,
-    sentAt: new Date().toISOString(),
-  };
-  saveLog(log);
+  if (error) {
+    console.error("[Supabase] markAsSent error:", error.message);
+  }
 }
 
 module.exports = { isAlreadySent, markAsSent };
