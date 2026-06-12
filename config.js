@@ -1,30 +1,29 @@
-// ─────────────────────────────────────────────
-// TERRATERN META CAPI CONFIG
-// Fill in your values below
-// ─────────────────────────────────────────────
-
 module.exports = {
   // Metabase
-  METABASE_URL: "https://metabase.terratern.com",         // No trailing slash
-  METABASE_API_KEY: "PASTE_YOUR_METABASE_API_KEY_HERE",   // Metabase → Account Settings → API Key
-  METABASE_DATABASE_ID: 2,                                 // Already confirmed from your URL
+  METABASE_URL: "https://metabase.terratern.com",
+  METABASE_API_KEY: process.env.METABASE_API_KEY,
+  METABASE_DATABASE_ID: 2,
 
   // Meta
-  PIXEL_ID: "PASTE_YOUR_PIXEL_ID_HERE",                   // 15-16 digit number from Events Manager
-  CAPI_ACCESS_TOKEN: "PASTE_YOUR_CAPI_ACCESS_TOKEN_HERE", // System User token from Business Manager
+  PIXEL_ID: process.env.PIXEL_ID,
+  CAPI_ACCESS_TOKEN: process.env.CAPI_ACCESS_TOKEN,
 
-  // Schedule: hourly, 10AM–7PM IST (4:30AM–1:30PM UTC)
-  CRON_SCHEDULE: "0 4,5,6,7,8,9,10,11,12,13 * * 1-6",   // Mon–Sat, 9 runs/day
+  // Supabase
+  SUPABASE_URL: "https://otzmitwvvetdzheogtkr.supabase.co",
+  SUPABASE_ANON_KEY: process.env.SUPABASE_ANON_KEY,
 
-  // Lead Status IDs to track (from your CRM)
+  // Schedule: hourly, Mon–Sat, 10AM–7PM IST (4:30AM–1:30PM UTC)
+  CRON_SCHEDULE: "0 4,5,6,7,8,9,10,11,12,13 * * 1-6",
+
+  // Lead Status IDs to track
   TRACKED_STATUSES: {
     12: "WebinarBooked",
-    20: "WebinarBooked",       // Webinar Booked System
-    24: "WebinarBooked",       // Webinar Booked 1:1
+    20: "WebinarBooked",
+    24: "WebinarBooked",
     15: "WebinarAttended",
-    13: "CounsellingDone",     // Counselling Done - Interested
+    13: "CounsellingDone",
     26: "PaymentScheduled",
-    8:  "Purchase",            // Payment Done
-    17: "Purchase"             // Payment Done - Secondary
+    8:  "Purchase",
+    17: "Purchase"
   }
 };
