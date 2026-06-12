@@ -1,22 +1,7 @@
-const cron = require("node-cron");
 const { fetchRecentStatusChanges } = require("./metabase");
-const { sendToMetaCAPI } = require("./capi");
+const { sendToMetaCAPI, normalizePhone, hash } = require("./capi");
 const { isAlreadySent, markAsSent } = require("./dedup");
-const { CRON_SCHEDULE, TRACKED_STATUSES } = require("./config");
-const crypto = require("crypto");
-
-function hash(value) {
-  if (!value) return null;
-  return crypto.createHash("sha256").update(value.toString().trim().toLowerCase()).digest("hex");
-}
-
-function normalizePhone(phone) {
-  if (!phone) return null;
-  let p = phone.toString().replace(/\D/g, "");
-  if (p.length === 10) p = "91" + p;
-  if (p.length === 12 && p.startsWith("91")) return p;
-  return null;
-}
+const { TRACKED_STATUSES } = require("./config");
 
 async function run() {
   console.log(`\n[${new Date().toISOString()}] 🔄 Starting CAPI pull...`);
@@ -26,7 +11,7 @@ async function run() {
 
   if (leads.length === 0) {
     console.log("[CAPI] Nothing to send.\n");
-    return;
+    process.exit(0);
   }
 
   const toSend = [];
@@ -42,21 +27,25 @@ async function run() {
       continue;
     }
 
-    const normalizedPhone = normalizePhone(lead.phone);
+    const normalizedPhone = normalizePhone(lead.country_code, lead.mobile);
+    const phoneHash = hash(normalizedPhone);
+    const emailHash = hash(lead.email);
+
     toSend.push({
-      leadId: lead.lead_id,
+      leadId:    lead.lead_id,
       eventName,
       eventTime: Math.floor(new Date(lead.updated_at).getTime() / 1000),
-      phone: normalizedPhone,
-      phoneHash: hash(normalizedPhone),
-      email: lead.email,
-      program: lead.program,
+      phoneHash,
+      emailHash,
       statusId,
     });
   }
 
   console.log(`[CAPI] ${toSend.length} new event(s) to send`);
-  if (toSend.length === 0) return;
+
+  if (toSend.length === 0) {
+    process.exit(0);
+  }
 
   try {
     const metaRes = await sendToMetaCAPI(toSend);
@@ -65,15 +54,11 @@ async function run() {
     }
     console.log(`[CAPI] ✅ Done. ${toSend.length} event(s) logged to Supabase.\n`);
   } catch (err) {
-    console.error("[CAPI] ❌ Failed to send batch. Will retry next cycle.\n");
+    console.error("[CAPI] ❌ Failed to send batch.\n");
+    process.exit(1);
   }
+
+  process.exit(0);
 }
 
-// Run once immediately on start
 run();
-
-// Schedule: hourly, Mon–Sat, 10AM–7PM IST
-cron.schedule(CRON_SCHEDULE, () => { run(); });
-
-console.log("🚀 TerraTern CAPI Poller running...");
-console.log(`📅 Schedule: Hourly, Mon–Sat, 10AM–7PM IST (9 pulls/day)`);
