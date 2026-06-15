@@ -28,14 +28,18 @@ async function sendToMetaCAPI(events) {
       const eventData = {
         event_name: e.eventName,
         event_time: e.eventTime,
-        event_source_url: "https://terratern.com",
-        action_source: "crm",
+        action_source: "system_generated",
         user_data: userData,
+        custom_data: {
+          event_source: "crm",
+          lead_event_source: "TerraTern CRM",
+        },
       };
 
       // Purchase events require currency and value
       if (e.eventName === "Purchase") {
         eventData.custom_data = {
+          ...eventData.custom_data,
           currency: "INR",
           value: e.paymentAmount || 0,
         };
@@ -50,7 +54,7 @@ async function sendToMetaCAPI(events) {
 
   try {
     const res = await axios.post(
-      `https://graph.facebook.com/v19.0/${PIXEL_ID}/events?access_token=${CAPI_ACCESS_TOKEN}`,
+      `https://graph.facebook.com/v25.0/${PIXEL_ID}/events?access_token=${CAPI_ACCESS_TOKEN}`,
       payload
     );
     console.log(`[CAPI] ✅ Sent ${events.length} event(s):`, JSON.stringify(res.data));
