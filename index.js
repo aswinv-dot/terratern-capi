@@ -33,7 +33,12 @@ async function run() {
   const toSend = [];
 
   for (const lead of leads) {
-    const leadId = lead.id || lead.lead_id;
+    const rawId = lead.id || lead.lead_id;
+    const leadId = rawId ? String(rawId).replace(/,/g, "").trim() : null;
+    if (!leadId) {
+      console.log(`[Skip] Lead with no ID — skipping`);
+      continue;
+    }
     const statusId = Number(lead.lead_status_id);
     const eventName = TRACKED_STATUSES[statusId];
     if (!eventName) continue;
@@ -48,15 +53,13 @@ async function run() {
     const phoneHash = hash(normalizedPhone);
     const emailHash = hash(lead.email);
 
-    // Debug — remove after confirming
-    console.log(`[Debug] lead ${leadId} | phone: ${normalizedPhone} | email: ${lead.email} | phoneHash: ${phoneHash?.slice(0,8)} | emailHash: ${emailHash?.slice(0,8)}`);
-
     toSend.push({
       leadId,
       eventName,
       eventTime: Math.floor(new Date(lead.updated_at).getTime() / 1000),
       phoneHash,
       emailHash,
+      paymentAmount: lead.payment_amount || null,
       statusId,
     });
   }
