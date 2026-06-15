@@ -25,13 +25,23 @@ async function sendToMetaCAPI(events) {
       if (e.phoneHash) userData.ph = [e.phoneHash];
       if (e.emailHash) userData.em = [e.emailHash];
 
-      return {
+      const eventData = {
         event_name: e.eventName,
         event_time: e.eventTime,
         event_source_url: "https://terratern.com",
         action_source: "crm",
         user_data: userData,
       };
+
+      // Purchase events require currency and value
+      if (e.eventName === "Purchase") {
+        eventData.custom_data = {
+          currency: "INR",
+          value: e.paymentAmount || 0,
+        };
+      }
+
+      return eventData;
     }),
   };
 
