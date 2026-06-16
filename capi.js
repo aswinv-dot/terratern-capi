@@ -24,6 +24,7 @@ async function sendToMetaCAPI(events) {
       const userData = {};
       if (e.phoneHash) userData.ph = [e.phoneHash];
       if (e.emailHash) userData.em = [e.emailHash];
+      if (e.stateHash) userData.st = [e.stateHash];
 
       const eventData = {
         event_name: e.eventName,
