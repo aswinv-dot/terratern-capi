@@ -52,6 +52,7 @@ async function run() {
     const normalizedPhone = normalizePhone(lead.country_code, lead.mobile);
     const phoneHash = hash(normalizedPhone);
     const emailHash = hash(lead.email);
+    const stateHash = lead.state ? hash(lead.state) : null;
 
     toSend.push({
       leadId,
@@ -59,6 +60,7 @@ async function run() {
       eventTime: Math.floor(new Date(lead.updated_at).getTime() / 1000),
       phoneHash,
       emailHash,
+      stateHash,
       paymentAmount: lead.payment_amount || null,
       statusId,
     });
