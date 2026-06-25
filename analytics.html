@@ -214,84 +214,72 @@
     background: var(--surface);
     border: 1px solid var(--border);
     border-radius: 12px;
-    padding: 24px;
+    padding: 28px 24px;
     box-shadow: var(--shadow);
     margin-bottom: 24px;
   }
 
-  .funnel-stages { display: flex; flex-direction: column; gap: 10px; }
-
-  .funnel-stage {
-    display: grid;
-    grid-template-columns: 160px 1fr 80px 80px;
-    align-items: center;
-    gap: 12px;
+  .funnel-svg-wrap {
+    display: flex;
+    align-items: stretch;
+    gap: 0;
+    justify-content: center;
+    width: 100%;
+    max-width: 700px;
+    margin: 0 auto;
   }
 
-  .funnel-label {
-    font-size: 12px;
-    font-weight: 600;
-    color: var(--text-muted);
-    text-transform: uppercase;
-    letter-spacing: 0.05em;
+  .funnel-svg { flex: 0 0 320px; }
+
+  .funnel-labels {
+    display: flex;
+    flex-direction: column;
+    justify-content: space-around;
+    padding: 12px 0;
+    flex: 1;
+    min-width: 200px;
   }
 
-  .funnel-bar-wrap {
-    background: var(--bg);
-    border-radius: 4px;
-    height: 28px;
-    overflow: hidden;
-    position: relative;
-  }
-
-  .funnel-bar {
-    height: 100%;
-    border-radius: 4px;
-    transition: width 0.6s ease;
+  .funnel-label-row {
     display: flex;
     align-items: center;
-    padding-left: 10px;
-    min-width: 2px;
+    gap: 10px;
   }
 
-  .funnel-count {
-    font-size: 15px;
+  .funnel-label-line {
+    width: 32px;
+    height: 1px;
+    background: var(--border-light);
+    flex-shrink: 0;
+  }
+
+  .funnel-label-content {}
+
+  .funnel-label-name {
+    font-size: 11px;
+    font-weight: 700;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+  }
+
+  .funnel-label-count {
+    font-size: 22px;
     font-weight: 700;
     font-family: var(--mono);
     color: var(--navy);
-    text-align: right;
+    line-height: 1.1;
   }
 
-  .funnel-drop {
+  .funnel-label-conv {
     font-size: 11px;
     font-family: var(--mono);
-    text-align: right;
+    margin-top: 1px;
   }
 
-  .funnel-drop.good  { color: var(--green); }
-  .funnel-drop.warn  { color: var(--gold); }
-  .funnel-drop.bad   { color: var(--red); }
-
-  .funnel-connector {
-    display: flex;
-    align-items: center;
-    padding-left: 160px;
-    gap: 12px;
-    margin: 2px 0;
-  }
-
-  .funnel-connector-line {
-    width: 2px;
-    height: 10px;
-    background: var(--border);
-    margin-left: 12px;
-  }
-
-  .funnel-conversion {
-    font-size: 11px;
-    color: var(--text-dim);
-    font-family: var(--mono);
-  }
+  .funnel-label-conv.good  { color: var(--green); }
+  .funnel-label-conv.warn  { color: var(--gold); }
+  .funnel-label-conv.bad   { color: var(--red); }
 
   /* ── Trend Chart ── */
   .chart-card {
@@ -731,8 +719,11 @@
   <!-- Funnel -->
   <div class="section-title">Conversion Funnel</div>
   <div class="funnel-card">
-    <div class="funnel-stages" id="funnelStages">
-      <div class="loading-msg">Loading funnel data...</div>
+    <div class="funnel-svg-wrap">
+      <svg class="funnel-svg" id="funnelSVG" viewBox="0 0 320 400" xmlns="http://www.w3.org/2000/svg"></svg>
+      <div class="funnel-labels" id="funnelLabels">
+        <div class="loading-msg">Loading...</div>
+      </div>
     </div>
   </div>
 
@@ -879,12 +870,13 @@
   // ── Funnel ──
   async function loadFunnel() {
     const { start, end } = getDateRange();
+    if (!start || !end) return;
+
     const mf = `&sent_at=gte.${encodeURIComponent(start + "T00:00:00+05:30")}&sent_at=lte.${encodeURIComponent(end + "T23:59:59+05:30")}`;
 
     const counts = await Promise.all(
       FUNNEL_ORDER.map(evt => {
         if (evt === "WebinarAttended") {
-          // merge CounsellingDone
           return Promise.all([
             countFromSupabase(`&event_name=eq.WebinarAttended${mf}`),
             countFromSupabase(`&event_name=eq.CounsellingDone${mf}`)
@@ -894,53 +886,90 @@
       })
     );
 
-    const maxCount = Math.max(...counts, 1);
-    const container = document.getElementById("funnelStages");
-    container.innerHTML = "";
-
-    FUNNEL_ORDER.forEach((evt, i) => {
-      const count    = counts[i];
-      const pct      = Math.round((count / maxCount) * 100);
-      const color    = EVENT_COLORS[evt];
-      const prevCount = i > 0 ? counts[i - 1] : null;
-      const convRate  = prevCount ? ((count / prevCount) * 100).toFixed(1) : null;
-
-      // Connector between stages
-      if (i > 0 && prevCount !== null) {
-        const rate  = parseFloat(convRate);
-        const cls   = rate >= 60 ? "good" : rate >= 30 ? "warn" : "bad";
-        const arrow = document.createElement("div");
-        arrow.className = "funnel-connector";
-        arrow.innerHTML = `
-          <div class="funnel-connector-line"></div>
-          <span class="funnel-conversion ${cls}">↓ ${convRate}% conversion from ${FUNNEL_LABELS[FUNNEL_ORDER[i-1]]}</span>`;
-        container.appendChild(arrow);
-      }
-
-      const stage = document.createElement("div");
-      stage.className = "funnel-stage";
-
-      const dropLabel = i === 0
-        ? `<span class="funnel-drop" style="color:var(--text-dim)">top</span>`
-        : (() => {
-            const rate = parseFloat(convRate);
-            const cls  = rate >= 60 ? "good" : rate >= 30 ? "warn" : "bad";
-            const drop = prevCount > 0 ? (100 - rate).toFixed(1) : "—";
-            return `<span class="funnel-drop ${cls}">-${drop}%</span>`;
-          })();
-
-      stage.innerHTML = `
-        <div class="funnel-label">${FUNNEL_LABELS[evt]}</div>
-        <div class="funnel-bar-wrap">
-          <div class="funnel-bar" style="width:${pct}%;background:${color.border};opacity:0.85"></div>
-        </div>
-        <div class="funnel-count">${count.toLocaleString()}</div>
-        ${dropLabel}`;
-      container.appendChild(stage);
-    });
+    drawFunnel(counts);
   }
 
-  // ── Trend Chart ──
+  function drawFunnel(counts) {
+    const svg       = document.getElementById("funnelSVG");
+    const labelsDiv = document.getElementById("funnelLabels");
+    const W = 320, H = 400;
+    const n = counts.length;
+
+    // Funnel trapezoid geometry — widths from 90% at top to 28% at bottom
+    const topWidths    = [0.90, 0.70, 0.50, 0.28];
+    const bottomWidths = [0.70, 0.50, 0.28, 0.14];
+    const segH  = (H - 20) / n;
+    const cx    = W / 2;
+
+    const COLORS = {
+      WebinarBooked:    { fill: "#c7d9f5", stroke: "#00215c", dark: "#00215c" },
+      WebinarAttended:  { fill: "#b3d4f7", stroke: "#2f7fd4", dark: "#2f7fd4" },
+      PaymentScheduled: { fill: "#bbf7d0", stroke: "#16a34a", dark: "#16a34a" },
+      Purchase:         { fill: "#fef08a", stroke: "#b8930a", dark: "#b8930a" },
+    };
+
+    let svgHTML = `<defs>
+      ${FUNNEL_ORDER.map((evt, i) => {
+        const c = COLORS[evt];
+        return `<linearGradient id="fg${i}" x1="0" y1="0" x2="1" y2="0">
+          <stop offset="0%" stop-color="${c.stroke}" stop-opacity="0.7"/>
+          <stop offset="50%" stop-color="${c.fill}"/>
+          <stop offset="100%" stop-color="${c.stroke}" stop-opacity="0.7"/>
+        </linearGradient>`;
+      }).join('')}
+    </defs>`;
+
+    // Draw each trapezoid segment
+    FUNNEL_ORDER.forEach((evt, i) => {
+      const y0  = i * segH + 10;
+      const y1  = (i + 1) * segH + 10;
+      const tw  = topWidths[i] * W / 2;
+      const bw  = bottomWidths[i] * W / 2;
+
+      // Main trapezoid
+      const x0L = cx - tw, x0R = cx + tw;
+      const x1L = cx - bw, x1R = cx + bw;
+
+      // Ellipse caps for 3D effect
+      const ry = segH * 0.06;
+
+      svgHTML += `
+        <polygon points="${x0L},${y0} ${x0R},${y0} ${x1R},${y1} ${x1L},${y1}"
+          fill="url(#fg${i})" stroke="${COLORS[evt].stroke}" stroke-width="1.5" opacity="0.92"/>
+        <!-- top ellipse -->
+        <ellipse cx="${cx}" cy="${y0}" rx="${tw}" ry="${ry}"
+          fill="${COLORS[evt].stroke}" opacity="0.35"/>
+        <!-- bottom ellipse -->
+        <ellipse cx="${cx}" cy="${y1}" rx="${bw}" ry="${ry * (bw/tw)}"
+          fill="${COLORS[evt].stroke}" opacity="0.25"/>
+      `;
+    });
+
+    svg.innerHTML = svgHTML;
+    svg.setAttribute("viewBox", `0 0 ${W} ${H}`);
+
+    // Labels panel
+    const maxCount = Math.max(...counts, 1);
+    labelsDiv.innerHTML = FUNNEL_ORDER.map((evt, i) => {
+      const count   = counts[i];
+      const prev    = i > 0 ? counts[i-1] : null;
+      const conv    = prev ? ((count / prev) * 100).toFixed(1) : null;
+      const cls     = !conv ? "" : parseFloat(conv) >= 60 ? "good" : parseFloat(conv) >= 30 ? "warn" : "bad";
+      const convTxt = conv ? `↓ ${conv}% from prev` : "top of funnel";
+      const c       = COLORS[evt];
+      return `
+        <div class="funnel-label-row">
+          <div class="funnel-label-line" style="background:${c.stroke}"></div>
+          <div class="funnel-label-content">
+            <div class="funnel-label-name" style="color:${c.dark}">${FUNNEL_LABELS[evt]}</div>
+            <div class="funnel-label-count">${count.toLocaleString()}</div>
+            <div class="funnel-label-conv ${cls}">${convTxt}</div>
+          </div>
+        </div>`;
+    }).join('');
+  }
+
+
   async function loadTrend() {
     const { start, end } = getDateRange();
     if (!start || !end) return;
