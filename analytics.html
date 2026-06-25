@@ -1,0 +1,670 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>TerraTern CAPI — Analytics</title>
+<link rel="icon" href="https://terratern.com/images/favicon.png">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap');
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  :root {
+    --bg: #eaf2fc;
+    --surface: #ffffff;
+    --surface-deep: #dfeaf9;
+    --border: #d6e3f5;
+    --text: #0a0a0a;
+    --text-muted: #5b6b80;
+    --text-dim: #8da3bc;
+    --accent: #255cc1;
+    --accent-glow: rgba(37,92,193,0.10);
+    --navy: #00215c;
+    --sky: #2f7fd4;
+    --gold: #b8930a;
+    --green: #16a34a;
+    --red: #dc2626;
+    --red-bg: rgba(220,38,38,0.08);
+    --mono: 'JetBrains Mono', monospace;
+    --shadow: 0 1px 3px rgba(0,33,92,0.08), 0 1px 2px rgba(0,33,92,0.05);
+  }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Inter', sans-serif;
+    min-height: 100vh;
+    font-size: 14px;
+  }
+
+  /* ── Header ── */
+  .header {
+    border-bottom: 1px solid var(--border);
+    padding: 0 24px;
+    height: 56px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    position: sticky;
+    top: 0;
+    background: var(--surface);
+    box-shadow: var(--shadow);
+    z-index: 100;
+  }
+
+  .header-left { display: flex; align-items: center; gap: 12px; }
+
+  .logo-img { height: 26px; width: auto; }
+
+  .logo-dot {
+    width: 6px; height: 6px;
+    background: var(--gold);
+    border-radius: 50%;
+    box-shadow: 0 0 6px var(--gold);
+    animation: pulse 2s infinite;
+  }
+
+  @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.35} }
+
+  .logo-text { font-size: 13px; font-weight: 600; letter-spacing: 0.05em; }
+  .logo-sub  { font-size: 11px; color: var(--text-muted); font-family: var(--mono); }
+
+  .header-right { display: flex; align-items: center; gap: 8px; }
+
+  .nav-link {
+    padding: 5px 12px;
+    border-radius: 6px;
+    border: 1px solid var(--border);
+    background: var(--surface);
+    color: var(--text-muted);
+    font-size: 12px;
+    font-weight: 500;
+    text-decoration: none;
+    transition: all 0.15s;
+  }
+
+  .nav-link:hover { border-color: var(--accent); color: var(--accent); }
+
+  /* ── Trigger Button ── */
+  .trigger-btn {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 16px;
+    border-radius: 6px;
+    border: none;
+    background: var(--accent);
+    color: #fff;
+    font-size: 12px;
+    font-weight: 600;
+    cursor: pointer;
+    font-family: 'Inter', sans-serif;
+    transition: all 0.15s;
+  }
+
+  .trigger-btn:hover { background: var(--navy); }
+  .trigger-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+  .trigger-btn.running { background: var(--gold); color: #000; }
+
+  .trigger-status {
+    font-size: 11px;
+    font-family: var(--mono);
+    color: var(--text-muted);
+    min-width: 120px;
+    text-align: right;
+  }
+
+  /* ── Layout ── */
+  .container { max-width: 1200px; margin: 0 auto; padding: 24px; }
+
+  .section-title {
+    font-size: 13px;
+    font-weight: 700;
+    color: var(--navy);
+    text-transform: uppercase;
+    letter-spacing: 0.07em;
+    margin-bottom: 16px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .section-title::after {
+    content: "";
+    flex: 1;
+    height: 1px;
+    background: var(--border);
+  }
+
+  /* ── Date Range ── */
+  .controls {
+    display: flex;
+    gap: 8px;
+    margin-bottom: 24px;
+    flex-wrap: wrap;
+    align-items: center;
+  }
+
+  .range-btn {
+    padding: 5px 12px;
+    border-radius: 6px;
+    border: 1px solid var(--border);
+    background: var(--surface);
+    color: var(--text-muted);
+    font-size: 12px;
+    font-weight: 500;
+    cursor: pointer;
+    font-family: 'Inter', sans-serif;
+    transition: all 0.15s;
+  }
+
+  .range-btn.active, .range-btn:hover {
+    border-color: var(--accent);
+    color: var(--accent);
+    background: var(--accent-glow);
+  }
+
+  /* ── Funnel ── */
+  .funnel-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 24px;
+    box-shadow: var(--shadow);
+    margin-bottom: 24px;
+  }
+
+  .funnel-stages { display: flex; flex-direction: column; gap: 10px; }
+
+  .funnel-stage {
+    display: grid;
+    grid-template-columns: 160px 1fr 80px 80px;
+    align-items: center;
+    gap: 12px;
+  }
+
+  .funnel-label {
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+  }
+
+  .funnel-bar-wrap {
+    background: var(--bg);
+    border-radius: 4px;
+    height: 28px;
+    overflow: hidden;
+    position: relative;
+  }
+
+  .funnel-bar {
+    height: 100%;
+    border-radius: 4px;
+    transition: width 0.6s ease;
+    display: flex;
+    align-items: center;
+    padding-left: 10px;
+    min-width: 2px;
+  }
+
+  .funnel-count {
+    font-size: 15px;
+    font-weight: 700;
+    font-family: var(--mono);
+    color: var(--navy);
+    text-align: right;
+  }
+
+  .funnel-drop {
+    font-size: 11px;
+    font-family: var(--mono);
+    text-align: right;
+  }
+
+  .funnel-drop.good  { color: var(--green); }
+  .funnel-drop.warn  { color: var(--gold); }
+  .funnel-drop.bad   { color: var(--red); }
+
+  .funnel-connector {
+    display: flex;
+    align-items: center;
+    padding-left: 160px;
+    gap: 12px;
+    margin: 2px 0;
+  }
+
+  .funnel-connector-line {
+    width: 2px;
+    height: 10px;
+    background: var(--border);
+    margin-left: 12px;
+  }
+
+  .funnel-conversion {
+    font-size: 11px;
+    color: var(--text-dim);
+    font-family: var(--mono);
+  }
+
+  /* ── Trend Chart ── */
+  .chart-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 24px;
+    box-shadow: var(--shadow);
+    margin-bottom: 24px;
+  }
+
+  .chart-wrap {
+    position: relative;
+    height: 320px;
+  }
+
+  .chart-legend {
+    display: flex;
+    gap: 16px;
+    flex-wrap: wrap;
+    margin-bottom: 16px;
+  }
+
+  .legend-item {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 12px;
+    color: var(--text-muted);
+    font-weight: 500;
+  }
+
+  .legend-dot {
+    width: 10px; height: 10px;
+    border-radius: 2px;
+  }
+
+  /* ── Loading / Empty ── */
+  .loading-msg {
+    text-align: center;
+    padding: 40px;
+    color: var(--text-muted);
+    font-size: 13px;
+  }
+
+  /* ── Toast ── */
+  .toast {
+    position: fixed;
+    bottom: 24px; right: 24px;
+    padding: 10px 18px;
+    border-radius: 8px;
+    font-size: 13px;
+    font-weight: 600;
+    transform: translateY(60px);
+    opacity: 0;
+    transition: all 0.25s;
+    z-index: 999;
+    color: #fff;
+  }
+  .toast.show { transform: translateY(0); opacity: 1; }
+  .toast.success { background: var(--green); }
+  .toast.error   { background: var(--red); }
+  .toast.info    { background: var(--accent); }
+
+  @media (max-width: 768px) {
+    .container { padding: 16px; }
+    .funnel-stage { grid-template-columns: 120px 1fr 60px 60px; }
+    .chart-wrap { height: 220px; }
+    .header { padding: 0 16px; }
+  }
+</style>
+</head>
+<body>
+
+<div class="header">
+  <div class="header-left">
+    <img src="https://terratern.com/images/logo.svg" alt="TerraTern" class="logo-img">
+    <div class="logo-dot"></div>
+    <div>
+      <div class="logo-text">CAPI · Analytics</div>
+      <div class="logo-sub">Funnel &amp; Trends</div>
+    </div>
+  </div>
+  <div class="header-right">
+    <span class="trigger-status" id="triggerStatus"></span>
+    <button class="trigger-btn" id="triggerBtn" onclick="manualTrigger()">
+      ▶ Run Pipeline Now
+    </button>
+    <a class="nav-link" href="index.html">← Event Logs</a>
+  </div>
+</div>
+
+<div class="container">
+
+  <!-- Date range controls -->
+  <div class="controls">
+    <button class="range-btn active" onclick="setRange(7, this)">Last 7 Days</button>
+    <button class="range-btn" onclick="setRange(14, this)">Last 14 Days</button>
+    <button class="range-btn" onclick="setRange(30, this)">Last 30 Days</button>
+    <button class="range-btn" onclick="setRange(60, this)">Last 60 Days</button>
+    <button class="range-btn" onclick="setRange(90, this)">Last 90 Days</button>
+  </div>
+
+  <!-- Funnel -->
+  <div class="section-title">Conversion Funnel</div>
+  <div class="funnel-card">
+    <div class="funnel-stages" id="funnelStages">
+      <div class="loading-msg">Loading funnel data...</div>
+    </div>
+  </div>
+
+  <!-- Daily Trend Chart -->
+  <div class="section-title">Daily Signal Volume</div>
+  <div class="chart-card">
+    <div class="chart-legend" id="chartLegend"></div>
+    <div class="chart-wrap">
+      <canvas id="trendChart"></canvas>
+    </div>
+  </div>
+
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+  const SUPABASE_URL = "https://otzmitwvvetdzheogtkr.supabase.co";
+  const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im90em1pdHd2dmV0ZHpoZW9ndGtyIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODEyNjAzNTUsImV4cCI6MjA5NjgzNjM1NX0.YQwCTN7cxq0Zo0e66_Kl2yAmN0okWyqpTq-ktgexlig";
+
+  // Set RAILWAY_URL to your Railway service URL (without trailing slash)
+  // e.g. "https://terratern-capi.up.railway.app"
+  const RAILWAY_URL    = (window.RAILWAY_URL || "").replace(/\/$/, "");
+  const TRIGGER_SECRET = window.TRIGGER_SECRET || "";
+
+  let rangeDays  = 7;
+  let trendChart = null;
+
+  const EVENT_COLORS = {
+    WebinarBooked:    { bg: "rgba(0,33,92,0.15)",   border: "#00215c" },
+    WebinarAttended:  { bg: "rgba(47,127,212,0.20)", border: "#2f7fd4" },
+    PaymentScheduled: { bg: "rgba(22,163,74,0.15)",  border: "#16a34a" },
+    Purchase:         { bg: "rgba(184,147,10,0.20)", border: "#b8930a" },
+  };
+
+  const FUNNEL_ORDER = ["WebinarBooked","WebinarAttended","PaymentScheduled","Purchase"];
+  const FUNNEL_LABELS = {
+    WebinarBooked:    "Webinar Booked",
+    WebinarAttended:  "Webinar Attended",
+    PaymentScheduled: "Payment Scheduled",
+    Purchase:         "Purchase",
+  };
+
+  // ── Supabase helpers ──
+  async function supabaseRPC(fn, params) {
+    const res = await fetch(`${SUPABASE_URL}/rest/v1/rpc/${fn}`, {
+      method: "POST",
+      headers: {
+        "apikey": SUPABASE_KEY,
+        "Authorization": `Bearer ${SUPABASE_KEY}`,
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify(params)
+    });
+    if (!res.ok) throw new Error(`RPC error: ${res.status}`);
+    return res.json();
+  }
+
+  async function countFromSupabase(filter = "") {
+    const res = await fetch(`${SUPABASE_URL}/rest/v1/capi_events_log?select=id${filter}`, {
+      headers: {
+        "apikey": SUPABASE_KEY,
+        "Authorization": `Bearer ${SUPABASE_KEY}`,
+        "Content-Type": "application/json",
+        "Prefer": "count=exact",
+        "Range": "0-0"
+      }
+    });
+    if (!res.ok) throw new Error(`Count error: ${res.status}`);
+    const range = res.headers.get("Content-Range") || "";
+    const match = range.match(/\/(\d+)$/);
+    return match ? parseInt(match[1], 10) : 0;
+  }
+
+  // ── Date helpers ──
+  function pad(n) { return String(n).padStart(2, "0"); }
+  function fmt(d) { return `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}`; }
+
+  function getDateRange(days) {
+    const end   = new Date();
+    const start = new Date(); start.setDate(start.getDate() - (days - 1));
+    return { start: fmt(start), end: fmt(end) };
+  }
+
+  function setRange(days, btn) {
+    rangeDays = days;
+    document.querySelectorAll(".range-btn").forEach(b => b.classList.remove("active"));
+    btn.classList.add("active");
+    loadAll();
+  }
+
+  // ── Funnel ──
+  async function loadFunnel() {
+    const { start, end } = getDateRange(rangeDays);
+    const mf = `&sent_at=gte.${encodeURIComponent(start + "T00:00:00+05:30")}&sent_at=lte.${encodeURIComponent(end + "T23:59:59+05:30")}`;
+
+    const counts = await Promise.all(
+      FUNNEL_ORDER.map(evt => {
+        if (evt === "WebinarAttended") {
+          // merge CounsellingDone
+          return Promise.all([
+            countFromSupabase(`&event_name=eq.WebinarAttended${mf}`),
+            countFromSupabase(`&event_name=eq.CounsellingDone${mf}`)
+          ]).then(([a, b]) => a + b);
+        }
+        return countFromSupabase(`&event_name=eq.${evt}${mf}`);
+      })
+    );
+
+    const maxCount = Math.max(...counts, 1);
+    const container = document.getElementById("funnelStages");
+    container.innerHTML = "";
+
+    FUNNEL_ORDER.forEach((evt, i) => {
+      const count    = counts[i];
+      const pct      = Math.round((count / maxCount) * 100);
+      const color    = EVENT_COLORS[evt];
+      const prevCount = i > 0 ? counts[i - 1] : null;
+      const convRate  = prevCount ? ((count / prevCount) * 100).toFixed(1) : null;
+
+      // Connector between stages
+      if (i > 0 && prevCount !== null) {
+        const rate  = parseFloat(convRate);
+        const cls   = rate >= 60 ? "good" : rate >= 30 ? "warn" : "bad";
+        const arrow = document.createElement("div");
+        arrow.className = "funnel-connector";
+        arrow.innerHTML = `
+          <div class="funnel-connector-line"></div>
+          <span class="funnel-conversion ${cls}">↓ ${convRate}% conversion from ${FUNNEL_LABELS[FUNNEL_ORDER[i-1]]}</span>`;
+        container.appendChild(arrow);
+      }
+
+      const stage = document.createElement("div");
+      stage.className = "funnel-stage";
+
+      const dropLabel = i === 0
+        ? `<span class="funnel-drop" style="color:var(--text-dim)">top</span>`
+        : (() => {
+            const rate = parseFloat(convRate);
+            const cls  = rate >= 60 ? "good" : rate >= 30 ? "warn" : "bad";
+            const drop = prevCount > 0 ? (100 - rate).toFixed(1) : "—";
+            return `<span class="funnel-drop ${cls}">-${drop}%</span>`;
+          })();
+
+      stage.innerHTML = `
+        <div class="funnel-label">${FUNNEL_LABELS[evt]}</div>
+        <div class="funnel-bar-wrap">
+          <div class="funnel-bar" style="width:${pct}%;background:${color.border};opacity:0.85"></div>
+        </div>
+        <div class="funnel-count">${count.toLocaleString()}</div>
+        ${dropLabel}`;
+      container.appendChild(stage);
+    });
+  }
+
+  // ── Trend Chart ──
+  async function loadTrend() {
+    const { start, end } = getDateRange(rangeDays);
+    const rows = await supabaseRPC("get_daily_event_counts", {
+      start_date: start,
+      end_date:   end
+    });
+
+    // Build date axis
+    const days = [];
+    const cur = new Date(start);
+    const endD = new Date(end);
+    while (cur <= endD) { days.push(fmt(cur)); cur.setDate(cur.getDate() + 1); }
+
+    // Group by event
+    const byEvent = {};
+    FUNNEL_ORDER.forEach(e => { byEvent[e] = {}; days.forEach(d => { byEvent[e][d] = 0; }); });
+    rows.forEach(r => {
+      const evt = r.event_name;
+      if (byEvent[evt] && byEvent[evt][r.day] !== undefined) {
+        byEvent[evt][r.day] += parseInt(r.count, 10);
+      }
+    });
+
+    // Chart labels — short date format
+    const labels = days.map(d => {
+      const dt = new Date(d);
+      return dt.toLocaleDateString("en-IN", { day: "numeric", month: "short" });
+    });
+
+    const datasets = FUNNEL_ORDER.map(evt => ({
+      label:           FUNNEL_LABELS[evt],
+      data:            days.map(d => byEvent[evt][d]),
+      backgroundColor: EVENT_COLORS[evt].bg,
+      borderColor:     EVENT_COLORS[evt].border,
+      borderWidth:     2,
+      fill:            true,
+      tension:         0.3,
+      pointRadius:     3,
+      pointHoverRadius: 5,
+    }));
+
+    // Legend
+    const legend = document.getElementById("chartLegend");
+    legend.innerHTML = FUNNEL_ORDER.map(evt => `
+      <div class="legend-item">
+        <div class="legend-dot" style="background:${EVENT_COLORS[evt].border}"></div>
+        ${FUNNEL_LABELS[evt]}
+      </div>`).join("");
+
+    // Destroy old chart if exists
+    if (trendChart) { trendChart.destroy(); trendChart = null; }
+
+    const ctx = document.getElementById("trendChart").getContext("2d");
+    trendChart = new Chart(ctx, {
+      type: "line",
+      data: { labels, datasets },
+      options: {
+        responsive:          true,
+        maintainAspectRatio: false,
+        interaction:         { mode: "index", intersect: false },
+        plugins: {
+          legend: { display: false },
+          tooltip: {
+            backgroundColor: "#fff",
+            titleColor:      "#0a0a0a",
+            bodyColor:       "#5b6b80",
+            borderColor:     "#d6e3f5",
+            borderWidth:     1,
+            padding:         10,
+          }
+        },
+        scales: {
+          x: {
+            grid:  { color: "rgba(214,227,245,0.5)" },
+            ticks: { color: "#5b6b80", font: { size: 11 }, maxRotation: 45 }
+          },
+          y: {
+            grid:  { color: "rgba(214,227,245,0.5)" },
+            ticks: { color: "#5b6b80", font: { size: 11 }, precision: 0 },
+            beginAtZero: true
+          }
+        }
+      }
+    });
+  }
+
+  // ── Manual Trigger ──
+  async function manualTrigger() {
+    if (!RAILWAY_URL) {
+      showToast("Set RAILWAY_URL in this file first", "error");
+      return;
+    }
+    if (!TRIGGER_SECRET) {
+      showToast("Set TRIGGER_SECRET in this file first", "error");
+      return;
+    }
+
+    const btn = document.getElementById("triggerBtn");
+    const status = document.getElementById("triggerStatus");
+    btn.disabled = true;
+    btn.classList.add("running");
+    btn.textContent = "⏳ Running...";
+    status.textContent = "Pipeline triggered...";
+
+    try {
+      const res = await fetch(`${RAILWAY_URL}/trigger`, {
+        method: "POST",
+        headers: {
+          "Content-Type":    "application/json",
+          "x-trigger-secret": TRIGGER_SECRET
+        }
+      });
+
+      if (res.status === 409) {
+        showToast("Pipeline already running — try again shortly", "info");
+        status.textContent = "Already running";
+      } else if (res.status === 401) {
+        showToast("Trigger secret incorrect", "error");
+        status.textContent = "Auth failed";
+      } else if (res.ok) {
+        showToast("Pipeline triggered successfully ✓", "success");
+        status.textContent = `Last triggered: ${new Date().toLocaleTimeString("en-IN", { timeZone: "Asia/Kolkata" })}`;
+        // Reload analytics after 15s to pick up new events
+        setTimeout(loadAll, 15000);
+      } else {
+        showToast("Trigger failed — check Railway logs", "error");
+        status.textContent = "Failed";
+      }
+    } catch (err) {
+      showToast("Could not reach Railway service", "error");
+      status.textContent = "Network error";
+    }
+
+    btn.disabled = false;
+    btn.classList.remove("running");
+    btn.textContent = "▶ Run Pipeline Now";
+  }
+
+  // ── Toast ──
+  function showToast(msg, type = "info") {
+    const t = document.getElementById("toast");
+    t.textContent  = msg;
+    t.className    = `toast show ${type}`;
+    setTimeout(() => t.classList.remove("show"), 3000);
+  }
+
+  // ── Init ──
+  async function loadAll() {
+    await Promise.all([loadFunnel(), loadTrend()]);
+  }
+
+  loadAll();
+</script>
+</body>
+</html>
