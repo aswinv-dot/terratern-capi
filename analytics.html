@@ -1005,19 +1005,210 @@
   }
 
   loadAll();
+
+
+  // ── Calendar Component ──
+  const CAL = {
+    selStart: null,  // "YYYY-MM-DD"
+    selEnd:   null,
+    hoverDay: null,
+    leftYear: 0, leftMonth: 0,  // currently shown months
+    onApply: null,  // callback(from, to, label)
+  };
+
+  const MONTH_NAMES = ["January","February","March","April","May","June",
+    "July","August","September","October","November","December"];
+  const DOW = ["Su","Mo","Tu","We","Th","Fr","Sa"];
+
+  function calPad(n) { return String(n).padStart(2,"0"); }
+  function calFmt(y,m,d) { return `${y}-${calPad(m+1)}-${calPad(d)}`; }
+
+  function calOpen(onApply, preFrom, preTo) {
+    CAL.onApply  = onApply;
+    CAL.selStart = preFrom || null;
+    CAL.selEnd   = preTo   || null;
+    CAL.hoverDay = null;
+    // Show current month on left, next on right
+    const now = new Date();
+    CAL.leftYear  = now.getFullYear();
+    CAL.leftMonth = now.getMonth(); // 0-indexed
+    // If existing selection, show that month
+    if (CAL.selStart) {
+      const s = new Date(CAL.selStart + "T00:00:00");
+      CAL.leftYear  = s.getFullYear();
+      CAL.leftMonth = s.getMonth();
+    }
+    document.getElementById("calOverlay").style.display = "flex";
+    calRender();
+  }
+
+  function calClose() {
+    document.getElementById("calOverlay").style.display = "none";
+  }
+
+  function calCancel() { calClose(); }
+
+  function calApply() {
+    if (!CAL.selStart || !CAL.selEnd) return;
+    calClose();
+    if (CAL.onApply) CAL.onApply(CAL.selStart, CAL.selEnd, `${CAL.selStart} → ${CAL.selEnd}`);
+  }
+
+  function calOverlayClick(e) {
+    if (e.target === document.getElementById("calOverlay")) calCancel();
+  }
+
+  function calQuickPick(preset, btn) {
+    document.querySelectorAll(".cal-preset-btn").forEach(b => b.classList.remove("active"));
+    if(btn) btn.classList.add("active");
+
+    const now = new Date();
+    const pad = n => String(n).padStart(2,"0");
+    const fmt = d => `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}`;
+    let from, to, label;
+
+    if (preset === "today") {
+      from = to = fmt(now); label = "Today";
+    } else if (preset === "yesterday") {
+      const y = new Date(now); y.setDate(y.getDate()-1);
+      from = to = fmt(y); label = "Yesterday";
+    } else if (preset === "7d") {
+      const s = new Date(now); s.setDate(s.getDate()-6);
+      from = fmt(s); to = fmt(now); label = "Last 7 Days";
+    } else if (preset === "30d") {
+      const s = new Date(now); s.setDate(s.getDate()-29);
+      from = fmt(s); to = fmt(now); label = "Last 30 Days";
+    } else if (preset === "thisMonth") {
+      from = fmt(new Date(now.getFullYear(), now.getMonth(), 1));
+      to   = fmt(now);
+      label = now.toLocaleDateString("en-IN", { month:"long", year:"numeric" });
+    } else if (preset === "lastMonth") {
+      const lm  = new Date(now.getFullYear(), now.getMonth()-1, 1);
+      const lme = new Date(now.getFullYear(), now.getMonth(), 0);
+      from = fmt(lm); to = fmt(lme);
+      label = lm.toLocaleDateString("en-IN", { month:"long", year:"numeric" });
+    } else {
+      return; // custom — stay in calendar
+    }
+
+    calClose();
+    if (CAL.onApply) CAL.onApply(from, to, label);
+  }
+
+  function calNav(dir) {
+    CAL.leftMonth += dir;
+    if (CAL.leftMonth > 11) { CAL.leftMonth = 0; CAL.leftYear++; }
+    if (CAL.leftMonth < 0)  { CAL.leftMonth = 11; CAL.leftYear--; }
+    calRender();
+  }
+
+  function calRender() {
+    const rightYear  = CAL.leftMonth === 11 ? CAL.leftYear + 1 : CAL.leftYear;
+    const rightMonth = CAL.leftMonth === 11 ? 0 : CAL.leftMonth + 1;
+    renderCalMonth("calLeft",  CAL.leftYear,  CAL.leftMonth,  true,  false);
+    renderCalMonth("calRight", rightYear,     rightMonth,     false, true);
+    updateCalFooter();
+  }
+
+  function renderCalMonth(containerId, year, month, showPrev, showNext) {
+    const container = document.getElementById(containerId);
+    const today = new Date();
+    const todayStr = `${today.getFullYear()}-${calPad(today.getMonth()+1)}-${calPad(today.getDate())}`;
+    const firstDow = new Date(year, month, 1).getDay();
+    const daysInMonth = new Date(year, month+1, 0).getDate();
+
+    let html = `
+      <div class="cal-month-header">
+        <button class="cal-nav ${!showPrev ? "invisible" : ""}" onclick="calNav(-1)">‹</button>
+        <div class="cal-month-title">${MONTH_NAMES[month]} ${year}</div>
+        <button class="cal-nav ${!showNext ? "invisible" : ""}" onclick="calNav(1)">›</button>
+      </div>
+      <div class="cal-grid">
+        ${DOW.map(d => `<div class="cal-dow">${d}</div>`).join("")}
+        ${Array(firstDow).fill('<div class="cal-day cal-empty"></div>').join("")}`;
+
+    for (let d = 1; d <= daysInMonth; d++) {
+      const ds = calFmt(year, month, d);
+      let cls = "cal-day";
+      if (ds === todayStr) cls += " cal-today";
+
+      const s = CAL.selStart, e = CAL.selEnd, h = CAL.hoverDay;
+      const rangeEnd = e || h;
+
+      if (s && ds === s) cls += " cal-selected-start";
+      if (e && ds === e) cls += " cal-selected-end";
+      if (s && rangeEnd && ds > (s < rangeEnd ? s : rangeEnd) && ds < (s < rangeEnd ? rangeEnd : s)) {
+        cls += " cal-in-range";
+      }
+      if (s && !e && h && ds === h && ds !== s) cls += " cal-selected-end";
+
+      html += `<div class="${cls}" 
+        onclick="calDayClick('${ds}')" 
+        onmouseenter="calDayHover('${ds}')"
+        onmouseleave="calDayLeave()">${d}</div>`;
+    }
+
+    html += `</div>`;
+    container.innerHTML = html;
+  }
+
+  function calDayClick(ds) {
+    if (!CAL.selStart || (CAL.selStart && CAL.selEnd)) {
+      // Start new selection
+      CAL.selStart = ds;
+      CAL.selEnd   = null;
+    } else {
+      // Complete selection — ensure start < end
+      if (ds < CAL.selStart) {
+        CAL.selEnd   = CAL.selStart;
+        CAL.selStart = ds;
+      } else {
+        CAL.selEnd = ds;
+      }
+    }
+    calRender();
+  }
+
+  function calDayHover(ds) {
+    if (CAL.selStart && !CAL.selEnd) {
+      CAL.hoverDay = ds;
+      calRender();
+    }
+  }
+
+  function calDayLeave() {
+    CAL.hoverDay = null;
+    calRender();
+  }
+
+  function updateCalFooter() {
+    const label  = document.getElementById("calRangeLabel");
+    const apply  = document.getElementById("calApply");
+    if (!CAL.selStart) {
+      label.textContent = "Select start date";
+      apply.disabled = true;
+    } else if (!CAL.selEnd) {
+      label.textContent = `${CAL.selStart} → select end date`;
+      apply.disabled = true;
+    } else {
+      label.textContent = `${CAL.selStart} → ${CAL.selEnd}`;
+      apply.disabled = false;
+    }
+  }
+
 </script>
 
 <!-- Calendar Overlay -->
 <div class="cal-overlay" id="calOverlay" style="display:none;" onclick="calOverlayClick(event)">
   <div class="cal-box" onclick="event.stopPropagation()">
     <div class="cal-presets" id="calPresets">
-      <button class="cal-preset-btn" onclick="calQuickPick('today')">Today</button>
-      <button class="cal-preset-btn" onclick="calQuickPick('yesterday')">Yesterday</button>
-      <button class="cal-preset-btn" onclick="calQuickPick('7d')">Last 7 Days</button>
-      <button class="cal-preset-btn" onclick="calQuickPick('30d')">Last 30 Days</button>
-      <button class="cal-preset-btn" onclick="calQuickPick('thisMonth')">This Month</button>
-      <button class="cal-preset-btn" onclick="calQuickPick('lastMonth')">Last Month</button>
-      <button class="cal-preset-btn active" onclick="calQuickPick('custom')">Custom Range</button>
+      <button class="cal-preset-btn" onclick=\"calQuickPick('today',this)\">Today</button>
+      <button class="cal-preset-btn" onclick=\"calQuickPick('yesterday',this)\">Yesterday</button>
+      <button class="cal-preset-btn" onclick=\"calQuickPick('7d',this)\">Last 7 Days</button>
+      <button class="cal-preset-btn" onclick=\"calQuickPick('30d',this)\">Last 30 Days</button>
+      <button class="cal-preset-btn" onclick=\"calQuickPick('thisMonth',this)\">This Month</button>
+      <button class="cal-preset-btn" onclick=\"calQuickPick('lastMonth',this)\">Last Month</button>
+      <button class="cal-preset-btn active" onclick=\"calQuickPick('custom',this)\">Custom Range</button>
     </div>
     <div class="cal-right">
       <div class="cal-months">
