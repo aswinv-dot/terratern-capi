@@ -575,35 +575,51 @@
   }
 
   // Stats — Total uses trueTotal (real DB count) when viewing all months
+  // Build month filter string for count queries
+  function monthFilter() {
+    const month = document.getElementById("monthFilter").value;
+    if (month === "all") return "";
+    const monthStart = month + "-01T00:00:00+05:30";
+    const nextMonth = new Date(month + "-01");
+    nextMonth.setMonth(nextMonth.getMonth() + 1);
+    const monthEnd = nextMonth.toISOString().slice(0,7) + "-01T00:00:00+05:30";
+    return `&sent_at=gte.${encodeURIComponent(monthStart)}&sent_at=lt.${encodeURIComponent(monthEnd)}`;
+  }
+
   async function updateStats(data) {
     const today = new Date().toISOString().slice(0, 10);
-    const month = document.getElementById("monthFilter").value;
+    const mf    = monthFilter();
 
-    // Total Sent: use real DB count for "all months", filtered count query for specific month
-    if (month === "all") {
-      document.getElementById("statTotal").textContent = trueTotal !== null ? trueTotal : data.length;
-    } else {
-      // count rows for this specific month from DB (not capped at 1000)
-      try {
-        const monthStart = month + "-01T00:00:00+05:30";
-        const nextMonth = new Date(month + "-01");
-        nextMonth.setMonth(nextMonth.getMonth() + 1);
-        const monthEnd = nextMonth.toISOString().slice(0,7) + "-01T00:00:00+05:30";
-        const monthCount = await countFromSupabase(
-          `&sent_at=gte.${encodeURIComponent(monthStart)}&sent_at=lt.${encodeURIComponent(monthEnd)}`
-        );
-        document.getElementById("statTotal").textContent = monthCount !== null ? monthCount : data.length;
-      } catch {
-        document.getElementById("statTotal").textContent = data.length;
-      }
+    // Fire all 5 event-type counts + total in parallel — all bypass the 1000-row cap
+    try {
+      const [total, booked, attended, counselling, payment, purchase, todayCount] = await Promise.all([
+        mf === "" ? Promise.resolve(trueTotal) : countFromSupabase(mf),
+        countFromSupabase(`&event_name=eq.WebinarBooked${mf}`),
+        countFromSupabase(`&event_name=eq.WebinarAttended${mf}`),
+        countFromSupabase(`&event_name=eq.CounsellingDone${mf}`),
+        countFromSupabase(`&event_name=eq.PaymentScheduled${mf}`),
+        countFromSupabase(`&event_name=eq.Purchase${mf}`),
+        countFromSupabase(`&sent_at=gte.${encodeURIComponent(today + "T00:00:00+05:30")}`)
+      ]);
+
+      document.getElementById("statTotal").textContent   = total    ?? "—";
+      document.getElementById("statBooked").textContent  = booked   ?? "—";
+      // WebinarAttended + CounsellingDone merged
+      document.getElementById("statWebinar").textContent = ((attended ?? 0) + (counselling ?? 0)) || "—";
+      document.getElementById("statPayment").textContent = payment  ?? "—";
+      document.getElementById("statPurchase").textContent= purchase ?? "—";
+      document.getElementById("statToday").textContent   = todayCount ?? data.filter(r => r.sent_at?.startsWith(today)).length;
+    } catch {
+      // Fallback to in-memory counts from capped 1000-row fetch
+      document.getElementById("statTotal").textContent   = trueTotal ?? data.length;
+      document.getElementById("statBooked").textContent  = data.filter(r => r.event_name === "WebinarBooked").length;
+      document.getElementById("statWebinar").textContent = data.filter(r => displayEventName(r.event_name) === "WebinarAttended").length;
+      document.getElementById("statPayment").textContent = data.filter(r => r.event_name === "PaymentScheduled").length;
+      document.getElementById("statPurchase").textContent= data.filter(r => r.event_name === "Purchase").length;
+      document.getElementById("statToday").textContent   = data.filter(r => r.sent_at?.startsWith(today)).length;
     }
 
-    document.getElementById("statToday").textContent    = data.filter(r => r.sent_at?.startsWith(today)).length;
-    document.getElementById("statBooked").textContent   = data.filter(r => r.event_name === "WebinarBooked").length;
-    document.getElementById("statWebinar").textContent  = data.filter(r => displayEventName(r.event_name) === "WebinarAttended").length;
-    document.getElementById("statPayment").textContent  = data.filter(r => r.event_name === "PaymentScheduled").length;
-    document.getElementById("statPurchase").textContent = data.filter(r => r.event_name === "Purchase").length;
-
+    // Last Run — from the latest row in the 1000-row fetch (always recent enough)
     if (data.length > 0) {
       const last = new Date(data[0].sent_at);
       document.getElementById("statLastRun").textContent = last.toLocaleTimeString("en-IN", {
