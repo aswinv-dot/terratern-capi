@@ -1,9 +1,8 @@
 module.exports = {
-  METABASE_API_KEY:   process.env.METABASE_API_KEY,
-  PIXEL_ID:           process.env.PIXEL_ID,
-  CAPI_ACCESS_TOKEN:  process.env.CAPI_ACCESS_TOKEN,
-  SUPABASE_ANON_KEY:  process.env.SUPABASE_ANON_KEY,
-  TRIGGER_SECRET:     process.env.TRIGGER_SECRET,   // set this in Railway env vars
+  METABASE_API_KEY:  process.env.METABASE_API_KEY,
+  PIXEL_ID:          process.env.PIXEL_ID,
+  CAPI_ACCESS_TOKEN: process.env.CAPI_ACCESS_TOKEN,
+  SUPABASE_ANON_KEY: process.env.SUPABASE_ANON_KEY,
 
   TRACKED_STATUSES: {
     12: "WebinarBooked",
