@@ -1032,7 +1032,15 @@
 
   // getDateRange reads from dateRange state
   function getDateRange() {
-    return { start: dateRange.from, end: dateRange.to };
+    if (dateRange.from && dateRange.to) {
+      return { start: dateRange.from, end: dateRange.to };
+    }
+    // "All time" or unset — default to last 90 days for chart/funnel queries
+    const now = new Date();
+    const pad = n => String(n).padStart(2,"0");
+    const fmt = d => `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}`;
+    const s = new Date(now); s.setDate(s.getDate() - 89);
+    return { start: fmt(s), end: fmt(now) };
   }
 
   function setPreset(preset, btn) {
@@ -1164,8 +1172,6 @@
 
   async function loadFunnel() {
     const { start, end } = getDateRange();
-    if (!start || !end) return;
-
     const mf = `&sent_at=gte.${encodeURIComponent(start + "T00:00:00+05:30")}&sent_at=lte.${encodeURIComponent(end + "T23:59:59+05:30")}`;
 
     const counts = await Promise.all(
@@ -1266,8 +1272,6 @@
 
   async function loadTrend() {
     const { start, end } = getDateRange();
-    if (!start || !end) return;
-
     const rows = await supabaseRPC("get_daily_event_counts", {
       start_date: start,
       end_date:   end
