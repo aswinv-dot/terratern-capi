@@ -37,6 +37,7 @@
     font-family: 'Inter', sans-serif;
     min-height: 100vh;
     font-size: 14px;
+    width: 100%;
   }
 
   /* ── Header ── */
@@ -97,7 +98,7 @@
   }
 
   /* ── Layout ── */
-  .container { max-width: 900px; margin: 0 auto; padding: 24px; }
+  .container { max-width: 860px; width: 100%; margin: 0 auto; padding: 24px; box-sizing: border-box; }
 
   .section-title {
     font-size: 11px;
@@ -439,7 +440,7 @@
     background: var(--surface);
     border: 1px solid var(--border);
     border-radius: 12px;
-    padding: 32px 28px;
+    padding: 28px;
     box-shadow: var(--shadow);
     margin-bottom: 24px;
   }
@@ -510,7 +511,7 @@
     background: var(--surface);
     border: 1px solid var(--border);
     border-radius: 12px;
-    padding: 24px;
+    padding: 28px;
     box-shadow: var(--shadow);
     margin-bottom: 24px;
   }
@@ -570,7 +571,7 @@
   .toast.info    { background: var(--accent); }
 
   @media (max-width: 768px) {
-    .container { padding: 16px; }
+    .container { max-width: 860px; width: 100%; margin: 0 auto; padding: 24px; box-sizing: border-box; }
     .funnel-stage { grid-template-columns: 120px 1fr 60px 60px; }
     .chart-wrap { height: 220px; }
     .header { padding: 0 16px; }
@@ -937,10 +938,8 @@
     </div>
 
   </div>
-</div>
 
   <!-- Funnel -->
-  
   <div class="funnel-card">
     <div class="card-title">Conversion Funnel</div>
     <div class="funnel-svg-wrap">
@@ -952,9 +951,9 @@
   </div>
 
   <!-- Daily Trend Chart -->
-  
-  <div class="chart-card">
-    <div class="chart-legend" id="chartLegend"></div>
+  <div class="chart-card" id="chartCard">
+    <div class="card-title">Daily Signal Volume</div>
+    <div class="chart-legend" id="chartLegend"><span style="font-size:12px;color:var(--text-muted)">Run the Supabase RPC to load daily trends</span></div>
     <div class="chart-wrap">
       <canvas id="trendChart"></canvas>
     </div>
