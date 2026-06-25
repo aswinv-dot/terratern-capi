@@ -377,10 +377,8 @@
   const SUPABASE_URL = "https://otzmitwvvetdzheogtkr.supabase.co";
   const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im90em1pdHd2dmV0ZHpoZW9ndGtyIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODEyNjAzNTUsImV4cCI6MjA5NjgzNjM1NX0.YQwCTN7cxq0Zo0e66_Kl2yAmN0okWyqpTq-ktgexlig";
 
-  // Set RAILWAY_URL to your Railway service URL (without trailing slash)
-  // e.g. "https://terratern-capi.up.railway.app"
-  const RAILWAY_URL    = (window.RAILWAY_URL || "").replace(/\/$/, "");
-  const TRIGGER_SECRET = window.TRIGGER_SECRET || "";
+  const RAILWAY_URL    = "https://terratern-capi-production.up.railway.app";
+  const TRIGGER_SECRET = "TT-CAPI-2024"; // must match TRIGGER_SECRET in Railway Variables
 
   let rangeDays  = 7;
   let trendChart = null;
