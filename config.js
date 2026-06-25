@@ -1,9 +1,18 @@
 module.exports = {
-  METABASE_API_KEY:  process.env.METABASE_API_KEY,
+  // Metabase
+  METABASE_URL:         "https://metabase.terratern.com",
+  METABASE_API_KEY:     process.env.METABASE_API_KEY,
+  METABASE_DATABASE_ID: 2,
+
+  // Meta
   PIXEL_ID:          process.env.PIXEL_ID,
   CAPI_ACCESS_TOKEN: process.env.CAPI_ACCESS_TOKEN,
+
+  // Supabase
+  SUPABASE_URL:      "https://otzmitwvvetdzheogtkr.supabase.co",
   SUPABASE_ANON_KEY: process.env.SUPABASE_ANON_KEY,
 
+  // Lead Status IDs → Meta Event Names
   TRACKED_STATUSES: {
     12: "WebinarBooked",
     20: "WebinarBooked",
@@ -12,6 +21,6 @@ module.exports = {
     13: "CounsellingDone",
     26: "PaymentScheduled",
     8:  "Purchase",
-    17: "Purchase",
-  },
+    17: "Purchase"
+  }
 };
