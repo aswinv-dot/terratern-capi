@@ -498,6 +498,23 @@
     return res.json();
   }
 
+  // True count via Prefer: count=exact (bypasses 1000-row cap)
+  async function countFromSupabase(filter = "") {
+    const res = await fetch(`${SUPABASE_URL}/rest/v1/capi_events_log?select=id${filter}`, {
+      headers: {
+        "apikey": SUPABASE_KEY,
+        "Authorization": `Bearer ${SUPABASE_KEY}`,
+        "Content-Type": "application/json",
+        "Prefer": "count=exact",
+        "Range": "0-0"
+      }
+    });
+    if (!res.ok) throw new Error(`Supabase count error: ${res.status}`);
+    const range = res.headers.get("Content-Range") || "";
+    const match = range.match(/\/(\d+)$/);
+    return match ? parseInt(match[1], 10) : null;
+  }
+
   // ── Connection check ──
   async function checkConnection() {
     try {
@@ -518,21 +535,25 @@
     dot.style.boxShadow  = ok ? "0 0 6px var(--green)" : "0 0 6px var(--red)";
   }
 
-  // ── Load logs ──
+  // Load logs
+  let trueTotal = null;   // actual DB count, unrestricted by 1000-row cap
+
   async function loadLogs() {
     document.getElementById("logsBody").innerHTML =
       `<tr class="loading-row"><td colspan="7">Loading events...</td></tr>`;
     try {
-      const data = await fetchFromSupabase(
-        "capi_events_log?select=*&order=sent_at.desc&limit=1000"
-      );
+      const [data, total] = await Promise.all([
+        fetchFromSupabase("capi_events_log?select=*&order=sent_at.desc&limit=1000"),
+        countFromSupabase()
+      ]);
+      trueTotal = total;
       allLogs = data;
       populateMonthFilter(data);
       applyFilters();
       setConnected(true);
     } catch (e) {
       document.getElementById("logsBody").innerHTML =
-        `<tr class="loading-row"><td colspan="7" style="color:var(--red)">⚠ Could not load logs.</td></tr>`;
+        `<tr class="loading-row"><td colspan="7" style="color:var(--red)">&#9888; Could not load logs.</td></tr>`;
       setConnected(false);
     }
   }
@@ -553,10 +574,30 @@
     if (sorted.includes(prevValue) || prevValue === "all") sel.value = prevValue;
   }
 
-  // ── Stats (respect month filter) ──
-  function updateStats(data) {
+  // Stats — Total uses trueTotal (real DB count) when viewing all months
+  async function updateStats(data) {
     const today = new Date().toISOString().slice(0, 10);
-    document.getElementById("statTotal").textContent    = data.length;
+    const month = document.getElementById("monthFilter").value;
+
+    // Total Sent: use real DB count for "all months", filtered count query for specific month
+    if (month === "all") {
+      document.getElementById("statTotal").textContent = trueTotal !== null ? trueTotal : data.length;
+    } else {
+      // count rows for this specific month from DB (not capped at 1000)
+      try {
+        const monthStart = month + "-01T00:00:00+05:30";
+        const nextMonth = new Date(month + "-01");
+        nextMonth.setMonth(nextMonth.getMonth() + 1);
+        const monthEnd = nextMonth.toISOString().slice(0,7) + "-01T00:00:00+05:30";
+        const monthCount = await countFromSupabase(
+          `&sent_at=gte.${encodeURIComponent(monthStart)}&sent_at=lt.${encodeURIComponent(monthEnd)}`
+        );
+        document.getElementById("statTotal").textContent = monthCount !== null ? monthCount : data.length;
+      } catch {
+        document.getElementById("statTotal").textContent = data.length;
+      }
+    }
+
     document.getElementById("statToday").textContent    = data.filter(r => r.sent_at?.startsWith(today)).length;
     document.getElementById("statBooked").textContent   = data.filter(r => r.event_name === "WebinarBooked").length;
     document.getElementById("statWebinar").textContent  = data.filter(r => displayEventName(r.event_name) === "WebinarAttended").length;
@@ -582,7 +623,7 @@
     applyFilters();
   }
 
-  function applyFilters() {
+  async function applyFilters() {
     const search = document.getElementById("searchInput").value.trim().toLowerCase();
     const month  = document.getElementById("monthFilter").value;
 
@@ -594,7 +635,7 @@
       return matchEvent && matchSearch && matchMonth;
     });
 
-    updateStats(filtered);
+    await updateStats(filtered);
     renderPage();
   }
 
