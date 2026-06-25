@@ -188,7 +188,12 @@
     overflow: hidden;
   }
 
-  .dp-presets { display: flex; flex-direction: column; padding: 6px; gap: 2px; }
+  .dp-presets {
+    display: flex;
+    flex-direction: column;
+    padding: 6px;
+    gap: 2px;
+  }
 
   .dp-preset {
     padding: 7px 12px;
@@ -207,6 +212,233 @@
   .dp-preset:hover { background: var(--bg); color: var(--text); }
   .dp-preset.active { background: var(--accent-glow); color: var(--accent); font-weight: 600; }
 
+
+
+
+  .nav-link {
+    padding: 5px 12px;
+    border-radius: 6px;
+    border: 1px solid var(--border);
+    background: var(--surface);
+    color: var(--text-muted);
+    font-size: 12px;
+    font-weight: 500;
+    text-decoration: none;
+    transition: all 0.15s;
+  }
+  .nav-link:hover { border-color: var(--accent); color: var(--accent); }
+
+
+  .cal-overlay {
+    position: fixed;
+    inset: 0;
+    z-index: 300;
+    background: rgba(0,0,0,0.15);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .cal-box {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    box-shadow: 0 8px 32px rgba(0,33,92,0.18);
+    display: flex;
+    overflow: hidden;
+    min-width: 660px;
+    max-width: 95vw;
+    font-family: "Inter", sans-serif;
+  }
+
+  .cal-presets {
+    width: 160px;
+    border-right: 1px solid var(--border);
+    padding: 10px 8px;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    background: var(--surface);
+  }
+
+  .cal-preset-btn {
+    padding: 8px 12px;
+    border: none;
+    background: transparent;
+    color: var(--text-muted);
+    font-size: 12px;
+    font-family: "Inter", sans-serif;
+    cursor: pointer;
+    text-align: left;
+    border-radius: 6px;
+    transition: all 0.1s;
+    font-weight: 500;
+  }
+
+  .cal-preset-btn:hover { background: var(--bg); color: var(--text); }
+  .cal-preset-btn.active { background: var(--accent-glow); color: var(--accent); font-weight: 600; }
+
+  .cal-right {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    padding: 20px;
+  }
+
+  .cal-months {
+    display: flex;
+    gap: 24px;
+    margin-bottom: 16px;
+  }
+
+  .cal-month {
+    flex: 1;
+    min-width: 200px;
+  }
+
+  .cal-month-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 12px;
+  }
+
+  .cal-month-title {
+    font-size: 13px;
+    font-weight: 700;
+    color: var(--navy);
+  }
+
+  .cal-nav {
+    width: 26px;
+    height: 26px;
+    border: 1px solid var(--border);
+    border-radius: 5px;
+    background: var(--surface);
+    cursor: pointer;
+    font-size: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--text-muted);
+    transition: all 0.1s;
+  }
+
+  .cal-nav:hover { border-color: var(--accent); color: var(--accent); }
+  .cal-nav.invisible { visibility: hidden; }
+
+  .cal-grid {
+    display: grid;
+    grid-template-columns: repeat(7, 1fr);
+    gap: 2px;
+  }
+
+  .cal-dow {
+    font-size: 10px;
+    font-weight: 700;
+    color: var(--text-dim);
+    text-align: center;
+    padding: 4px 0;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+  }
+
+  .cal-day {
+    font-size: 12px;
+    text-align: center;
+    padding: 6px 4px;
+    border-radius: 5px;
+    cursor: pointer;
+    color: var(--text);
+    transition: all 0.1s;
+    font-weight: 500;
+    border: 1px solid transparent;
+  }
+
+  .cal-day:hover:not(.cal-empty):not(.cal-disabled) {
+    background: var(--accent-glow);
+    border-color: var(--accent);
+    color: var(--accent);
+  }
+
+  .cal-day.cal-empty { cursor: default; }
+  .cal-day.cal-disabled { color: var(--text-dim); cursor: default; }
+
+  .cal-day.cal-selected-start,
+  .cal-day.cal-selected-end {
+    background: var(--accent);
+    color: #fff;
+    font-weight: 700;
+    border-color: var(--accent);
+  }
+
+  .cal-day.cal-in-range {
+    background: var(--accent-glow);
+    color: var(--accent);
+    border-radius: 0;
+  }
+
+  .cal-day.cal-today {
+    border-color: var(--accent);
+    color: var(--accent);
+    font-weight: 700;
+  }
+
+  .cal-day.cal-today.cal-selected-start,
+  .cal-day.cal-today.cal-selected-end {
+    color: #fff;
+  }
+
+  .cal-footer {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    border-top: 1px solid var(--border);
+    padding-top: 14px;
+    margin-top: 4px;
+  }
+
+  .cal-range-label {
+    font-size: 11px;
+    font-family: var(--mono);
+    color: var(--accent);
+    font-weight: 600;
+  }
+
+  .cal-btns { display: flex; gap: 8px; }
+
+  .cal-btn {
+    padding: 6px 18px;
+    border-radius: 6px;
+    font-size: 12px;
+    font-weight: 600;
+    cursor: pointer;
+    font-family: "Inter", sans-serif;
+    transition: all 0.15s;
+  }
+
+  .cal-btn-cancel {
+    border: 1px solid var(--border);
+    background: var(--surface);
+    color: var(--text-muted);
+  }
+
+  .cal-btn-cancel:hover { border-color: var(--red); color: var(--red); }
+
+  .cal-btn-apply {
+    border: none;
+    background: var(--accent);
+    color: #fff;
+  }
+
+  .cal-btn-apply:hover { background: var(--navy); }
+  .cal-btn-apply:disabled { opacity: 0.4; cursor: not-allowed; }
+
+  @media (max-width: 680px) {
+    .cal-box { flex-direction: column; min-width: unset; width: 95vw; }
+    .cal-presets { width: 100%; flex-direction: row; flex-wrap: wrap; border-right: none; border-bottom: 1px solid var(--border); }
+    .cal-months { flex-direction: column; gap: 16px; }
+  }
 
 
   /* ── Funnel ── */
@@ -697,24 +929,26 @@
   <div class="controls">
     <div class="date-picker-wrap" id="datePickerWrap">
       <button class="date-picker-btn" id="datePickerBtn" onclick="toggleDatePicker(event)">
-        <span id="datePickerLabel">Last 7 Days</span>
+        <span id="datePickerLabel">All time</span>
         <span class="dp-arrow">▾</span>
       </button>
       <div class="date-picker-dropdown" id="datePickerDropdown" style="display:none;">
         <div class="dp-presets">
+          <button class="dp-preset active" onclick="setPreset('all',this)">All time</button>
+          <button class="dp-preset" onclick="setPreset('today',this)">Today</button>
+          <button class="dp-preset" onclick="setPreset('yesterday',this)">Yesterday</button>
           <button class="dp-preset" onclick="setPreset('7d',this)">Last 7 Days</button>
-          <button class="dp-preset" onclick="setPreset('14d',this)">Last 14 Days</button>
           <button class="dp-preset" onclick="setPreset('30d',this)">Last 30 Days</button>
           <button class="dp-preset" onclick="setPreset('thisMonth',this)">This Month</button>
           <button class="dp-preset" onclick="setPreset('lastMonth',this)">Last Month</button>
-          <button class="dp-preset" onclick="setPreset('60d',this)">Last 60 Days</button>
-          <button class="dp-preset" onclick="setPreset('90d',this)">Last 90 Days</button>
           <button class="dp-preset" onclick="setPreset('custom',this)">Custom Range</button>
         </div>
 
       </div>
     </div>
+
   </div>
+</div>
 
   <!-- Funnel -->
   <div class="section-title">Conversion Funnel</div>
@@ -801,29 +1035,33 @@
     return { start: dateRange.from, end: dateRange.to };
   }
 
-  // ── Date Picker Logic ──
-  function pad(n) { return String(n).padStart(2, "0"); }
-  function fmt(d) { return `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}`; }
-
   function setPreset(preset, btn) {
     const now = new Date();
-    let from = null, to = null, label = "Last 7 Days";
+    const pad = n => String(n).padStart(2, "0");
+    const fmt = d => `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}`;
 
     document.querySelectorAll(".dp-preset").forEach(b => b.classList.remove("active"));
     btn.classList.add("active");
 
+    let from = null, to = null, label = "All time";
 
-    if (preset === "7d")  { const s = new Date(now); s.setDate(s.getDate()-6); from=fmt(s); to=fmt(now); label="Last 7 Days"; }
-    else if (preset === "14d") { const s = new Date(now); s.setDate(s.getDate()-13); from=fmt(s); to=fmt(now); label="Last 14 Days"; }
-    else if (preset === "30d") { const s = new Date(now); s.setDate(s.getDate()-29); from=fmt(s); to=fmt(now); label="Last 30 Days"; }
-    else if (preset === "60d") { const s = new Date(now); s.setDate(s.getDate()-59); from=fmt(s); to=fmt(now); label="Last 60 Days"; }
-    else if (preset === "90d") { const s = new Date(now); s.setDate(s.getDate()-89); from=fmt(s); to=fmt(now); label="Last 90 Days"; }
-    else if (preset === "thisMonth") {
+    if (preset === "today") {
+      from = to = fmt(now); label = "Today";
+    } else if (preset === "yesterday") {
+      const y = new Date(now); y.setDate(y.getDate() - 1);
+      from = to = fmt(y); label = "Yesterday";
+    } else if (preset === "7d") {
+      const s = new Date(now); s.setDate(s.getDate() - 6);
+      from = fmt(s); to = fmt(now); label = "Last 7 Days";
+    } else if (preset === "30d") {
+      const s = new Date(now); s.setDate(s.getDate() - 29);
+      from = fmt(s); to = fmt(now); label = "Last 30 Days";
+    } else if (preset === "thisMonth") {
       from = fmt(new Date(now.getFullYear(), now.getMonth(), 1));
-      to   = fmt(now);
+      to = fmt(now);
       label = now.toLocaleDateString("en-IN", { month: "long", year: "numeric" });
     } else if (preset === "lastMonth") {
-      const lm  = new Date(now.getFullYear(), now.getMonth()-1, 1);
+      const lm = new Date(now.getFullYear(), now.getMonth() - 1, 1);
       const lme = new Date(now.getFullYear(), now.getMonth(), 0);
       from = fmt(lm); to = fmt(lme);
       label = lm.toLocaleDateString("en-IN", { month: "long", year: "numeric" });
@@ -835,7 +1073,8 @@
     dateRange = { preset, from, to };
     document.getElementById("datePickerLabel").textContent = label;
     closeDatePicker();
-    loadAll();
+    if (typeof loadAll === "function") loadAll();
+    else if (typeof applyFilters === "function") applyFilters();
   }
 
   function buildCustomLabel() {
@@ -862,12 +1101,67 @@
     document.getElementById("datePickerBtn").classList.remove("open");
   }
 
-  document.addEventListener("click", e => {
-    const wrap = document.getElementById("datePickerWrap");
-    if (wrap && !wrap.contains(e.target)) closeDatePicker();
+  document.addEventListener("click", (e) => {
+    if (!document.getElementById("datePickerWrap").contains(e.target)) closeDatePicker();
   });
 
-  // ── Funnel ──
+  // Build Supabase filter string from current dateRange
+  function monthFilter() {
+    const { from, to } = dateRange;
+    if (!from && !to) return "";
+    let filter = "";
+    if (from) filter += `&sent_at=gte.${encodeURIComponent(toIST(from))}`;
+    if (to)   filter += `&sent_at=lte.${encodeURIComponent(toIST(to, true))}`;
+    return filter;
+  }
+
+  async function updateStats(data) {
+    const today = new Date().toISOString().slice(0, 10);
+    const mf    = monthFilter();
+
+    // Fire all 5 event-type counts + total in parallel — all bypass the 1000-row cap
+    try {
+      const [total, booked, attended, counselling, payment, purchase, todayCount] = await Promise.all([
+        mf === "" ? Promise.resolve(trueTotal) : countFromSupabase(mf),
+        countFromSupabase(`&event_name=eq.WebinarBooked${mf}`),
+        countFromSupabase(`&event_name=eq.WebinarAttended${mf}`),
+        countFromSupabase(`&event_name=eq.CounsellingDone${mf}`),
+        countFromSupabase(`&event_name=eq.PaymentScheduled${mf}`),
+        countFromSupabase(`&event_name=eq.Purchase${mf}`),
+        countFromSupabase(`&sent_at=gte.${encodeURIComponent(today + "T00:00:00+05:30")}`)
+      ]);
+
+      document.getElementById("statTotal").textContent   = total    ?? "—";
+      document.getElementById("statBooked").textContent  = booked   ?? "—";
+      // WebinarAttended + CounsellingDone merged
+      document.getElementById("statWebinar").textContent = ((attended ?? 0) + (counselling ?? 0)) || "—";
+      document.getElementById("statPayment").textContent = payment  ?? "—";
+      document.getElementById("statPurchase").textContent= purchase ?? "—";
+      document.getElementById("statToday").textContent   = todayCount ?? data.filter(r => r.sent_at?.startsWith(today)).length;
+    } catch {
+      // Fallback to in-memory counts from capped 1000-row fetch
+      document.getElementById("statTotal").textContent   = trueTotal ?? data.length;
+      document.getElementById("statBooked").textContent  = data.filter(r => r.event_name === "WebinarBooked").length;
+      document.getElementById("statWebinar").textContent = data.filter(r => displayEventName(r.event_name) === "WebinarAttended").length;
+      document.getElementById("statPayment").textContent = data.filter(r => r.event_name === "PaymentScheduled").length;
+      document.getElementById("statPurchase").textContent= data.filter(r => r.event_name === "Purchase").length;
+      document.getElementById("statToday").textContent   = data.filter(r => r.sent_at?.startsWith(today)).length;
+    }
+
+    // Last Run — from the latest row in the 1000-row fetch (always recent enough)
+    if (data.length > 0) {
+      const last = new Date(data[0].sent_at);
+      document.getElementById("statLastRun").textContent = last.toLocaleTimeString("en-IN", {
+        timeZone: "Asia/Kolkata", hour: "2-digit", minute: "2-digit"
+      });
+    } else {
+      document.getElementById("statLastRun").textContent = "—";
+    }
+  }
+
+  // ── Filters ──
+
+
   async function loadFunnel() {
     const { start, end } = getDateRange();
     if (!start || !end) return;
@@ -1177,8 +1471,8 @@
       b.classList.toggle("active", b.textContent.trim() === "Custom Range");
     });
     // trigger the right reload function
-    if (typeof applyFilters === "function") applyFilters();
-    else if (typeof loadAll === "function") loadAll();
+    if (typeof loadAll === "function") loadAll();
+    else if (typeof applyFilters === "function") applyFilters();
   }
 
 </script>
