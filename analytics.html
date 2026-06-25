@@ -715,8 +715,6 @@
     document.querySelectorAll(".dp-preset").forEach(b => b.classList.remove("active"));
     btn.classList.add("active");
 
-    const custom = document.getElementById("dpCustom");
-    custom.style.display = preset === "custom" ? "flex" : "none";
 
     if (preset === "7d")  { const s = new Date(now); s.setDate(s.getDate()-6); from=fmt(s); to=fmt(now); label="Last 7 Days"; }
     else if (preset === "14d") { const s = new Date(now); s.setDate(s.getDate()-13); from=fmt(s); to=fmt(now); label="Last 14 Days"; }
