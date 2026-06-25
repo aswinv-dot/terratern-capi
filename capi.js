@@ -37,16 +37,7 @@ async function sendToMetaCAPI(events) {
         },
       };
 
-      // Free webinar events — send value:0 to satisfy Meta's price/currency diagnostic
-      if (e.eventName === "WebinarBooked" || e.eventName === "WebinarAttended") {
-        eventData.custom_data = {
-          ...eventData.custom_data,
-          currency: "INR",
-          value: 0,
-        };
-      }
-
-      // Purchase events — real payment amount
+      // Purchase events require currency and value
       if (e.eventName === "Purchase") {
         eventData.custom_data = {
           ...eventData.custom_data,
