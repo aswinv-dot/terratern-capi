@@ -602,9 +602,9 @@
   const SUPABASE_KEY  = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im90em1pdHd2dmV0ZHpoZW9ndGtyIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODEyNjAzNTUsImV4cCI6MjA5NjgzNjM1NX0.YQwCTN7cxq0Zo0e66_Kl2yAmN0okWyqpTq-ktgexlig";
   const PAGE_SIZE     = 50;
 
-  let allLogs    = [];
-  let filtered   = [];
-  let currentPage = 1;
+  let allLogs      = [];   // kept for fallback stats only
+  let filteredTotal = 0;  // true DB count for current filters
+  let currentPage  = 1;
   let activeFilter = "all";
 
   // CounsellingDone is merged into WebinarAttended for display only.
@@ -667,22 +667,15 @@
   let trueTotal = null;   // actual DB count, unrestricted by 1000-row cap
 
   async function loadLogs() {
-    document.getElementById("logsBody").innerHTML =
-      `<tr class="loading-row"><td colspan="7">Loading events...</td></tr>`;
     try {
-      const [data, total] = await Promise.all([
-        fetchFromSupabase("capi_events_log?select=*&order=sent_at.desc&limit=1000"),
-        countFromSupabase()
-      ]);
-      trueTotal = total;
-      allLogs = data;
-      applyFilters();
+      trueTotal = await countFromSupabase();
       setConnected(true);
     } catch (e) {
-      document.getElementById("logsBody").innerHTML =
-        `<tr class="loading-row"><td colspan="7" style="color:var(--red)">&#9888; Could not load logs.</td></tr>`;
       setConnected(false);
     }
+    currentPage = 1;
+    await fetchPage();
+    await updateStats([]);
   }
 
   // ── Date Range Picker state ──
@@ -835,52 +828,73 @@
     document.querySelectorAll(".filter-btn").forEach(b => b.classList.remove("active"));
     btn.classList.add("active");
     currentPage = 1;
-    applyFilters();
+    applyFilters(); // async, fire and forget
+  }
+
+  // Build event filter for Supabase query
+  function buildEventFilter() {
+    let f = "";
+    const mf = monthFilter();
+    const search = document.getElementById("searchInput").value.trim();
+    // event type
+    if (activeFilter !== "all") {
+      if (activeFilter === "WebinarAttended") {
+        // include CounsellingDone rows too
+        f += `&or=(event_name.eq.WebinarAttended,event_name.eq.CounsellingDone)`;
+      } else {
+        f += `&event_name=eq.${activeFilter}`;
+      }
+    }
+    // date range
+    if (mf) f += mf;
+    // search — Supabase ilike
+    if (search) f += `&lead_id=ilike.*${encodeURIComponent(search)}*`;
+    return f;
+  }
+
+  async function fetchPage() {
+    document.getElementById("logsBody").innerHTML =
+      `<tr class="loading-row"><td colspan="7">Loading...</td></tr>`;
+    const offset = (currentPage - 1) * PAGE_SIZE;
+    const ef = buildEventFilter();
+    try {
+      const [rows, pageTotal] = await Promise.all([
+        fetchFromSupabase(`capi_events_log?select=*&order=sent_at.desc&limit=${PAGE_SIZE}&offset=${offset}${ef}`),
+        countFromSupabase(ef)
+      ]);
+      filteredTotal = pageTotal ?? 0;
+      renderPage(rows, offset);
+    } catch (e) {
+      document.getElementById("logsBody").innerHTML =
+        `<tr class="loading-row"><td colspan="7" style="color:var(--red)">&#9888; Could not load logs.</td></tr>`;
+    }
   }
 
   async function applyFilters() {
-    const search = document.getElementById("searchInput").value.trim().toLowerCase();
-
-    filtered = allLogs.filter(r => {
-      const displayName = displayEventName(r.event_name);
-      const matchEvent  = activeFilter === "all" || displayName === activeFilter;
-      const matchSearch = !search || r.lead_id?.toLowerCase().includes(search);
-      let matchDate = true;
-      if (r.sent_at && (dateRange.from || dateRange.to)) {
-        const rowDate = r.sent_at.slice(0, 10); // "YYYY-MM-DD"
-        if (dateRange.from && rowDate < dateRange.from) matchDate = false;
-        if (dateRange.to   && rowDate > dateRange.to)   matchDate = false;
-      }
-      return matchEvent && matchSearch && matchDate;
-    });
-
-    await updateStats(filtered);
-    renderPage();
+    currentPage = 1;
+    await fetchPage();
+    await updateStats([]);
   }
 
   // ── Render ──
-  function renderPage() {
-    const tbody   = document.getElementById("logsBody");
-    const total   = filtered.length;
-    const pages   = Math.ceil(total / PAGE_SIZE);
-    const start   = (currentPage - 1) * PAGE_SIZE;
-    const slice   = filtered.slice(start, start + PAGE_SIZE);
+  function renderPage(rows, offset) {
+    const tbody = document.getElementById("logsBody");
 
-    if (slice.length === 0) {
+    if (!rows || rows.length === 0) {
       tbody.innerHTML = `
         <tr><td colspan="7">
           <div class="empty-state">
             <div class="empty-icon">📭</div>
-            <div class="empty-title">No events yet</div>
-            <div class="empty-sub">Events will appear here once the poller starts sending signals to Meta</div>
+            <div class="empty-title">No events found</div>
+            <div class="empty-sub">Try adjusting your filters or date range</div>
           </div>
         </td></tr>`;
       document.getElementById("pagination").style.display = "none";
       return;
     }
 
-    tbody.innerHTML = slice.map((r, i) => {
-      const idx = start + i + 1;
+    tbody.innerHTML = rows.map((r, i) => {
+      const idx = offset + i + 1;
       const displayName = displayEventName(r.event_name);
       const sentIST = new Date(r.sent_at).toLocaleString("en-IN", {
         timeZone: "Asia/Kolkata",
@@ -901,17 +915,20 @@
         </tr>`;
     }).join("");
 
+    const pages = Math.ceil(filteredTotal / PAGE_SIZE);
+    const start = offset + 1;
+    const end   = Math.min(offset + PAGE_SIZE, filteredTotal);
     const pagination = document.getElementById("pagination");
     pagination.style.display = "flex";
     document.getElementById("pageInfo").textContent =
-      `${start + 1}–${Math.min(start + PAGE_SIZE, total)} of ${total} events`;
+      `${start}–${end} of ${filteredTotal.toLocaleString()} events`;
     document.getElementById("prevBtn").disabled = currentPage <= 1;
     document.getElementById("nextBtn").disabled = currentPage >= pages;
   }
 
-  function changePage(dir) {
+  async function changePage(dir) {
     currentPage += dir;
-    renderPage();
+    await fetchPage();
     window.scrollTo(0, 0);
   }
 
