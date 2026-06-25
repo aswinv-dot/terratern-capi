@@ -878,9 +878,6 @@
     document.querySelectorAll(".dp-preset").forEach(b => b.classList.remove("active"));
     btn.classList.add("active");
 
-    const custom = document.getElementById("dpCustom");
-    custom.style.display = preset === "custom" ? "flex" : "none";
-
     let from = null, to = null, label = "All time";
 
     if (preset === "today") {
