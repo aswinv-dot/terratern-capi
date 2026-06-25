@@ -147,24 +147,97 @@
     align-items: center;
   }
 
-  .range-btn {
+  /* ── Date Picker ── */
+  .date-picker-wrap { position: relative; }
+
+  .date-picker-btn {
+    display: flex;
+    align-items: center;
+    gap: 6px;
     padding: 5px 12px;
     border-radius: 6px;
     border: 1px solid var(--border);
     background: var(--surface);
     color: var(--text-muted);
     font-size: 12px;
-    font-weight: 500;
+    font-family: var(--mono);
     cursor: pointer;
-    font-family: 'Inter', sans-serif;
+    white-space: nowrap;
     transition: all 0.15s;
+    min-width: 130px;
+    justify-content: space-between;
   }
 
-  .range-btn.active, .range-btn:hover {
+  .date-picker-btn:hover, .date-picker-btn.open {
     border-color: var(--accent);
     color: var(--accent);
-    background: var(--accent-glow);
   }
+
+  .dp-arrow { font-size: 10px; opacity: 0.6; }
+
+  .date-picker-dropdown {
+    position: absolute;
+    top: calc(100% + 6px);
+    left: 0;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    box-shadow: 0 4px 20px rgba(0,33,92,0.12);
+    z-index: 200;
+    min-width: 180px;
+    overflow: hidden;
+  }
+
+  .dp-presets { display: flex; flex-direction: column; padding: 6px; gap: 2px; }
+
+  .dp-preset {
+    padding: 7px 12px;
+    border: none;
+    background: transparent;
+    color: var(--text-muted);
+    font-size: 12px;
+    font-family: 'Inter', sans-serif;
+    cursor: pointer;
+    text-align: left;
+    border-radius: 6px;
+    transition: all 0.1s;
+    font-weight: 500;
+  }
+
+  .dp-preset:hover { background: var(--bg); color: var(--text); }
+  .dp-preset.active { background: var(--accent-glow); color: var(--accent); font-weight: 600; }
+
+  .dp-custom {
+    border-top: 1px solid var(--border);
+    padding: 10px;
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  .dp-custom-row { display: flex; align-items: center; gap: 8px; }
+
+  .dp-custom-row label {
+    font-size: 11px;
+    font-weight: 600;
+    color: var(--text-muted);
+    width: 28px;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+  }
+
+  .dp-custom-row input[type="date"] {
+    flex: 1;
+    padding: 4px 8px;
+    border: 1px solid var(--border);
+    border-radius: 5px;
+    background: var(--bg);
+    color: var(--text);
+    font-size: 12px;
+    font-family: var(--mono);
+    outline: none;
+  }
+
+  .dp-custom-row input[type="date"]:focus { border-color: var(--accent); }
 
   /* ── Funnel ── */
   .funnel-card {
@@ -343,13 +416,36 @@
 
 <div class="container">
 
-  <!-- Date range controls -->
+  <!-- Date picker -->
   <div class="controls">
-    <button class="range-btn active" onclick="setRange(7, this)">Last 7 Days</button>
-    <button class="range-btn" onclick="setRange(14, this)">Last 14 Days</button>
-    <button class="range-btn" onclick="setRange(30, this)">Last 30 Days</button>
-    <button class="range-btn" onclick="setRange(60, this)">Last 60 Days</button>
-    <button class="range-btn" onclick="setRange(90, this)">Last 90 Days</button>
+    <div class="date-picker-wrap" id="datePickerWrap">
+      <button class="date-picker-btn" id="datePickerBtn" onclick="toggleDatePicker(event)">
+        <span id="datePickerLabel">Last 7 Days</span>
+        <span class="dp-arrow">▾</span>
+      </button>
+      <div class="date-picker-dropdown" id="datePickerDropdown" style="display:none;">
+        <div class="dp-presets">
+          <button class="dp-preset" onclick="setPreset('7d',this)">Last 7 Days</button>
+          <button class="dp-preset" onclick="setPreset('14d',this)">Last 14 Days</button>
+          <button class="dp-preset" onclick="setPreset('30d',this)">Last 30 Days</button>
+          <button class="dp-preset" onclick="setPreset('thisMonth',this)">This Month</button>
+          <button class="dp-preset" onclick="setPreset('lastMonth',this)">Last Month</button>
+          <button class="dp-preset" onclick="setPreset('60d',this)">Last 60 Days</button>
+          <button class="dp-preset" onclick="setPreset('90d',this)">Last 90 Days</button>
+          <button class="dp-preset" onclick="setPreset('custom',this)">Custom Range</button>
+        </div>
+        <div class="dp-custom" id="dpCustom" style="display:none;">
+          <div class="dp-custom-row">
+            <label>From</label>
+            <input type="date" id="dpFrom" onchange="onCustomDate()">
+          </div>
+          <div class="dp-custom-row">
+            <label>To</label>
+            <input type="date" id="dpTo" onchange="onCustomDate()">
+          </div>
+        </div>
+      </div>
+    </div>
   </div>
 
   <!-- Funnel -->
@@ -380,8 +476,8 @@
   const RAILWAY_URL    = "https://terratern-capi-production.up.railway.app";
   const TRIGGER_SECRET = "TT-CAPI-2024"; // must match TRIGGER_SECRET in Railway Variables
 
-  let rangeDays  = 7;
   let trendChart = null;
+  let dateRange  = { preset: "7d", from: null, to: null };
 
   const EVENT_COLORS = {
     WebinarBooked:    { bg: "rgba(0,33,92,0.15)",   border: "#00215c" },
@@ -429,26 +525,92 @@
     return match ? parseInt(match[1], 10) : 0;
   }
 
-  // ── Date helpers ──
+  // getDateRange reads from dateRange state
+  function getDateRange() {
+    return { start: dateRange.from, end: dateRange.to };
+  }
+
+  // ── Date Picker Logic ──
   function pad(n) { return String(n).padStart(2, "0"); }
   function fmt(d) { return `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}`; }
 
-  function getDateRange(days) {
-    const end   = new Date();
-    const start = new Date(); start.setDate(start.getDate() - (days - 1));
-    return { start: fmt(start), end: fmt(end) };
+  function setPreset(preset, btn) {
+    const now = new Date();
+    let from = null, to = null, label = "Last 7 Days";
+
+    document.querySelectorAll(".dp-preset").forEach(b => b.classList.remove("active"));
+    btn.classList.add("active");
+
+    const custom = document.getElementById("dpCustom");
+    custom.style.display = preset === "custom" ? "flex" : "none";
+
+    if (preset === "7d")  { const s = new Date(now); s.setDate(s.getDate()-6); from=fmt(s); to=fmt(now); label="Last 7 Days"; }
+    else if (preset === "14d") { const s = new Date(now); s.setDate(s.getDate()-13); from=fmt(s); to=fmt(now); label="Last 14 Days"; }
+    else if (preset === "30d") { const s = new Date(now); s.setDate(s.getDate()-29); from=fmt(s); to=fmt(now); label="Last 30 Days"; }
+    else if (preset === "60d") { const s = new Date(now); s.setDate(s.getDate()-59); from=fmt(s); to=fmt(now); label="Last 60 Days"; }
+    else if (preset === "90d") { const s = new Date(now); s.setDate(s.getDate()-89); from=fmt(s); to=fmt(now); label="Last 90 Days"; }
+    else if (preset === "thisMonth") {
+      from = fmt(new Date(now.getFullYear(), now.getMonth(), 1));
+      to   = fmt(now);
+      label = now.toLocaleDateString("en-IN", { month: "long", year: "numeric" });
+    } else if (preset === "lastMonth") {
+      const lm  = new Date(now.getFullYear(), now.getMonth()-1, 1);
+      const lme = new Date(now.getFullYear(), now.getMonth(), 0);
+      from = fmt(lm); to = fmt(lme);
+      label = lm.toLocaleDateString("en-IN", { month: "long", year: "numeric" });
+    } else if (preset === "custom") {
+      dateRange = { preset, from: dateRange.from, to: dateRange.to };
+      document.getElementById("datePickerLabel").textContent = buildCustomLabel();
+      return;
+    }
+
+    dateRange = { preset, from, to };
+    document.getElementById("datePickerLabel").textContent = label;
+    closeDatePicker();
+    // Mark first preset active
+  document.querySelector('.dp-preset').classList.add('active');
+  loadAll();
   }
 
-  function setRange(days, btn) {
-    rangeDays = days;
-    document.querySelectorAll(".range-btn").forEach(b => b.classList.remove("active"));
-    btn.classList.add("active");
-    loadAll();
+  function buildCustomLabel() {
+    const { from, to } = dateRange;
+    if (!from && !to) return "Custom Range";
+    if (from && to && from === to) return from;
+    if (from && to) return `${from} → ${to}`;
+    if (from) return `From ${from}`;
+    return `Until ${to}`;
   }
+
+  function onCustomDate() {
+    dateRange.from = document.getElementById("dpFrom").value || null;
+    dateRange.to   = document.getElementById("dpTo").value   || null;
+    dateRange.preset = "custom";
+    document.getElementById("datePickerLabel").textContent = buildCustomLabel();
+    if (dateRange.from && dateRange.to) loadAll();
+  }
+
+  function toggleDatePicker(e) {
+    e.stopPropagation();
+    const dd  = document.getElementById("datePickerDropdown");
+    const btn = document.getElementById("datePickerBtn");
+    const open = dd.style.display !== "none";
+    dd.style.display = open ? "none" : "block";
+    btn.classList.toggle("open", !open);
+  }
+
+  function closeDatePicker() {
+    document.getElementById("datePickerDropdown").style.display = "none";
+    document.getElementById("datePickerBtn").classList.remove("open");
+  }
+
+  document.addEventListener("click", e => {
+    const wrap = document.getElementById("datePickerWrap");
+    if (wrap && !wrap.contains(e.target)) closeDatePicker();
+  });
 
   // ── Funnel ──
   async function loadFunnel() {
-    const { start, end } = getDateRange(rangeDays);
+    const { start, end } = getDateRange();
     const mf = `&sent_at=gte.${encodeURIComponent(start + "T00:00:00+05:30")}&sent_at=lte.${encodeURIComponent(end + "T23:59:59+05:30")}`;
 
     const counts = await Promise.all(
@@ -512,7 +674,9 @@
 
   // ── Trend Chart ──
   async function loadTrend() {
-    const { start, end } = getDateRange(rangeDays);
+    const { start, end } = getDateRange();
+    if (!start || !end) return;
+
     const rows = await supabaseRPC("get_daily_event_counts", {
       start_date: start,
       end_date:   end
@@ -520,7 +684,7 @@
 
     // Build date axis
     const days = [];
-    const cur = new Date(start);
+    const cur  = new Date(start);
     const endD = new Date(end);
     while (cur <= endD) { days.push(fmt(cur)); cur.setDate(cur.getDate() + 1); }
 
@@ -536,20 +700,19 @@
 
     // Chart labels — short date format
     const labels = days.map(d => {
-      const dt = new Date(d);
+      const dt = new Date(d + "T00:00:00");
       return dt.toLocaleDateString("en-IN", { day: "numeric", month: "short" });
     });
 
+    // Stacked bar datasets — funnel order bottom to top
     const datasets = FUNNEL_ORDER.map(evt => ({
       label:           FUNNEL_LABELS[evt],
       data:            days.map(d => byEvent[evt][d]),
-      backgroundColor: EVENT_COLORS[evt].bg,
-      borderColor:     EVENT_COLORS[evt].border,
-      borderWidth:     2,
-      fill:            true,
-      tension:         0.3,
-      pointRadius:     3,
-      pointHoverRadius: 5,
+      backgroundColor: EVENT_COLORS[evt].border,
+      borderColor:     "transparent",
+      borderWidth:     0,
+      borderRadius:    2,
+      stack:           "funnel",
     }));
 
     // Legend
@@ -560,12 +723,11 @@
         ${FUNNEL_LABELS[evt]}
       </div>`).join("");
 
-    // Destroy old chart if exists
     if (trendChart) { trendChart.destroy(); trendChart = null; }
 
     const ctx = document.getElementById("trendChart").getContext("2d");
     trendChart = new Chart(ctx, {
-      type: "line",
+      type: "bar",
       data: { labels, datasets },
       options: {
         responsive:          true,
@@ -580,16 +742,21 @@
             borderColor:     "#d6e3f5",
             borderWidth:     1,
             padding:         10,
+            callbacks: {
+              label: ctx => ` ${ctx.dataset.label}: ${ctx.parsed.y.toLocaleString()}`
+            }
           }
         },
         scales: {
           x: {
-            grid:  { color: "rgba(214,227,245,0.5)" },
-            ticks: { color: "#5b6b80", font: { size: 11 }, maxRotation: 45 }
+            stacked: true,
+            grid:    { display: false },
+            ticks:   { color: "#5b6b80", font: { size: 11 }, maxRotation: 45 }
           },
           y: {
-            grid:  { color: "rgba(214,227,245,0.5)" },
-            ticks: { color: "#5b6b80", font: { size: 11 }, precision: 0 },
+            stacked: true,
+            grid:    { color: "rgba(214,227,245,0.5)" },
+            ticks:   { color: "#5b6b80", font: { size: 11 }, precision: 0 },
             beginAtZero: true
           }
         }
