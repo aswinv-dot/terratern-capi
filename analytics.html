@@ -87,26 +87,6 @@
 
   .nav-link:hover { border-color: var(--accent); color: var(--accent); }
 
-  /* ── Trigger Button ── */
-  .trigger-btn {
-    display: flex;
-    align-items: center;
-    gap: 6px;
-    padding: 6px 16px;
-    border-radius: 6px;
-    border: none;
-    background: var(--accent);
-    color: #fff;
-    font-size: 12px;
-    font-weight: 600;
-    cursor: pointer;
-    font-family: 'Inter', sans-serif;
-    transition: all 0.15s;
-  }
-
-  .trigger-btn:hover { background: var(--navy); }
-  .trigger-btn:disabled { opacity: 0.5; cursor: not-allowed; }
-  .trigger-btn.running { background: var(--gold); color: #000; }
 
   .trigger-status {
     font-size: 11px;
@@ -120,15 +100,16 @@
   .container { max-width: 1200px; margin: 0 auto; padding: 24px; }
 
   .section-title {
-    font-size: 13px;
+    font-size: 11px;
     font-weight: 700;
     color: var(--navy);
     text-transform: uppercase;
-    letter-spacing: 0.07em;
+    letter-spacing: 0.08em;
     margin-bottom: 16px;
     display: flex;
     align-items: center;
     gap: 8px;
+    padding: 0 2px;
   }
 
   .section-title::after {
@@ -446,36 +427,37 @@
     background: var(--surface);
     border: 1px solid var(--border);
     border-radius: 12px;
-    padding: 28px 24px;
+    padding: 32px 28px;
     box-shadow: var(--shadow);
     margin-bottom: 24px;
   }
 
   .funnel-svg-wrap {
     display: flex;
-    align-items: stretch;
-    gap: 0;
+    align-items: center;
+    gap: 24px;
     justify-content: center;
     width: 100%;
-    max-width: 700px;
+    max-width: 720px;
     margin: 0 auto;
   }
 
-  .funnel-svg { flex: 0 0 320px; }
+  .funnel-svg { flex: 0 0 260px; width: 260px; }
 
   .funnel-labels {
     display: flex;
     flex-direction: column;
     justify-content: space-around;
-    padding: 12px 0;
-    flex: 1;
-    min-width: 200px;
+    padding: 24px 0;
+    flex: 0 0 220px;
+    gap: 8px;
   }
 
   .funnel-label-row {
     display: flex;
     align-items: center;
-    gap: 10px;
+    gap: 12px;
+    padding: 4px 0;
   }
 
   .funnel-label-line {
@@ -496,7 +478,7 @@
   }
 
   .funnel-label-count {
-    font-size: 22px;
+    font-size: 20px;
     font-weight: 700;
     font-family: var(--mono);
     color: var(--navy);
@@ -525,7 +507,7 @@
 
   .chart-wrap {
     position: relative;
-    height: 320px;
+    height: 300px;
   }
 
   .chart-legend {
@@ -915,10 +897,6 @@
     </div>
   </div>
   <div class="header-right">
-    <span class="trigger-status" id="triggerStatus"></span>
-    <button class="trigger-btn" id="triggerBtn" onclick="manualTrigger()">
-      ▶ Run Pipeline Now
-    </button>
     <a class="nav-link" href="index.html">← Event Logs</a>
   </div>
 </div>
@@ -1254,8 +1232,9 @@
       const count   = counts[i];
       const prev    = i > 0 ? counts[i-1] : null;
       const conv    = prev ? ((count / prev) * 100).toFixed(1) : null;
-      const cls     = !conv ? "" : parseFloat(conv) >= 60 ? "good" : parseFloat(conv) >= 30 ? "warn" : "bad";
-      const convTxt = conv ? `↓ ${conv}% from prev` : "top of funnel";
+      const convNum = conv ? parseFloat(conv) : null;
+      const cls     = !convNum ? "" : convNum >= 60 ? "good" : convNum >= 30 ? "warn" : "bad";
+      const convTxt = !convNum ? "top of funnel" : convNum > 100 ? "skips prev stage" : `↓ ${conv}% from prev`;
       const c       = COLORS[evt];
       return `
         <div class="funnel-label-row">
@@ -1359,57 +1338,7 @@
     });
   }
 
-  // ── Manual Trigger ──
-  async function manualTrigger() {
-    if (!RAILWAY_URL) {
-      showToast("Set RAILWAY_URL in this file first", "error");
-      return;
-    }
-    if (!TRIGGER_SECRET) {
-      showToast("Set TRIGGER_SECRET in this file first", "error");
-      return;
-    }
 
-    const btn = document.getElementById("triggerBtn");
-    const status = document.getElementById("triggerStatus");
-    btn.disabled = true;
-    btn.classList.add("running");
-    btn.textContent = "⏳ Running...";
-    status.textContent = "Pipeline triggered...";
-
-    try {
-      const res = await fetch(`${RAILWAY_URL}/trigger`, {
-        method: "POST",
-        headers: {
-          "Content-Type":    "application/json",
-          "x-trigger-secret": TRIGGER_SECRET
-        }
-      });
-
-      if (res.status === 409) {
-        showToast("Pipeline already running — try again shortly", "info");
-        status.textContent = "Already running";
-      } else if (res.status === 401) {
-        showToast("Trigger secret incorrect", "error");
-        status.textContent = "Auth failed";
-      } else if (res.ok) {
-        showToast("Pipeline triggered successfully ✓", "success");
-        status.textContent = `Last triggered: ${new Date().toLocaleTimeString("en-IN", { timeZone: "Asia/Kolkata" })}`;
-        // Reload analytics after 15s to pick up new events
-        setTimeout(loadAll, 15000);
-      } else {
-        showToast("Trigger failed — check Railway logs", "error");
-        status.textContent = "Failed";
-      }
-    } catch (err) {
-      showToast("Could not reach Railway service", "error");
-      status.textContent = "Network error";
-    }
-
-    btn.disabled = false;
-    btn.classList.remove("running");
-    btn.textContent = "▶ Run Pipeline Now";
-  }
 
   // ── Toast ──
   function showToast(msg, type = "info") {
