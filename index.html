@@ -900,18 +900,6 @@
       const lme = new Date(now.getFullYear(), now.getMonth(), 0);
       from = fmt(lm); to = fmt(lme);
       label = lm.toLocaleDateString("en-IN", { month: "long", year: "numeric" });
-    } else if (preset === "custom") {
-      // Open full calendar picker
-      calOpen(
-        (from, to, lbl) => {
-          dateRange = { preset: "custom", from, to };
-          document.getElementById("datePickerLabel").textContent = lbl;
-          applyFilters();
-        },
-        dateRange.from,
-        dateRange.to
-      );
-      return;
     }
 
     dateRange = { preset, from, to };
@@ -1264,8 +1252,7 @@
 
       html += `<div class="${cls}" 
         onclick="calDayClick('${ds}')" 
-        onmouseenter="calDayHover('${ds}')"
-        onmouseleave="calDayLeave()">${d}</div>`;
+        onmouseenter="calDayHover('${ds}')">${d}</div>`;
     }
 
     html += `</div>`;
@@ -1290,15 +1277,17 @@
   }
 
   function calDayHover(ds) {
-    if (CAL.selStart && !CAL.selEnd) {
+    if (CAL.selStart && !CAL.selEnd && CAL.hoverDay !== ds) {
       CAL.hoverDay = ds;
       calRender();
     }
   }
 
   function calDayLeave() {
-    CAL.hoverDay = null;
-    calRender();
+    if (CAL.hoverDay !== null) {
+      CAL.hoverDay = null;
+      calRender();
+    }
   }
 
   function updateCalFooter() {
