@@ -1006,12 +1006,16 @@
       const lme = new Date(now.getFullYear(), now.getMonth(), 0);
       from = fmt(lm); to = fmt(lme);
       label = lm.toLocaleDateString("en-IN", { month: "long", year: "numeric" });
+    } else if (preset === "custom") {
+      openCustomPicker();
+      return;
     }
 
     dateRange = { preset, from, to };
     document.getElementById("datePickerLabel").textContent = label;
-    if (preset !== "custom") closeDatePicker();
-    applyFilters();
+    closeDatePicker();
+    if (typeof applyFilters === "function") applyFilters();
+    else if (typeof loadAll === "function") loadAll();
   }
 
   function buildCustomLabel() {
