@@ -1,8 +1,6 @@
-const crypto = require("crypto");
 const { fetchRecentStatusChanges } = require("./metabase");
-const { sendToMetaCAPI }           = require("./capi");
-const { isAlreadySent, markAsSent } = require("./dedup");
-const { TRACKED_STATUSES }          = require("./config");
+const { sendToMetaCAPI } = require("./capi");
+const crypto = require("crypto");
 
 function hash(value) {
   if (!value) return null;
@@ -11,12 +9,15 @@ function hash(value) {
 
 function normalizePhone(countryCode, mobile) {
   if (!mobile) return null;
-  let m  = mobile.toString().replace(/\D/g, "").trim();
+  let m = mobile.toString().replace(/\D/g, "").trim();
   let cc = (countryCode || "91").toString().replace(/\D/g, "").trim();
   if (!cc) cc = "91";
+  // Already has country code prefixed
   if (m.length > 10) return m;
   return cc + m;
 }
+const { isAlreadySent, markAsSent } = require("./dedup");
+const { TRACKED_STATUSES } = require("./config");
 
 async function run() {
   console.log(`\n[${new Date().toISOString()}] 🔄 Starting CAPI pull...`);
@@ -32,28 +33,34 @@ async function run() {
   const toSend = [];
 
   for (const lead of leads) {
-    const rawId  = lead.id || lead.lead_id;
+    const rawId = lead.id || lead.lead_id;
     const leadId = rawId ? String(rawId).replace(/,/g, "").trim() : null;
-    if (!leadId) { console.log(`[Skip] Lead with no ID`); continue; }
-
-    const statusId  = Number(lead.lead_status_id);
+    if (!leadId) {
+      console.log(`[Skip] Lead with no ID — skipping`);
+      continue;
+    }
+    const statusId = Number(lead.lead_status_id);
     const eventName = TRACKED_STATUSES[statusId];
     if (!eventName) continue;
 
     const alreadySent = await isAlreadySent(leadId, statusId);
     if (alreadySent) {
-      console.log(`[Dedup] Skipping lead ${leadId} (${eventName}) — already sent`);
+      console.log(`[Dedup] Skipping lead ${lead.lead_id} (${eventName}) — already sent`);
       continue;
     }
 
     const normalizedPhone = normalizePhone(lead.country_code, lead.mobile);
+    const phoneHash = hash(normalizedPhone);
+    const emailHash = hash(lead.email);
+    const stateHash = lead.state ? hash(lead.state) : null;
+
     toSend.push({
       leadId,
       eventName,
-      eventTime:     Math.floor(new Date(lead.updated_at).getTime() / 1000),
-      phoneHash:     hash(normalizedPhone),
-      emailHash:     hash(lead.email),
-      stateHash:     lead.state ? hash(lead.state) : null,
+      eventTime: Math.floor(new Date(lead.updated_at).getTime() / 1000),
+      phoneHash,
+      emailHash,
+      stateHash,
       paymentAmount: lead.payment_amount || null,
       statusId,
     });
