@@ -365,6 +365,109 @@
     .filter-input { width: 140px; }
     .header { padding: 0 16px; }
   }
+
+  /* ── Date Picker ── */
+  .date-picker-wrap { position: relative; }
+
+  .date-picker-btn {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 5px 12px;
+    border-radius: 6px;
+    border: 1px solid var(--border);
+    background: var(--surface);
+    color: var(--text-muted);
+    font-size: 12px;
+    font-family: var(--mono);
+    cursor: pointer;
+    white-space: nowrap;
+    transition: all 0.15s;
+    min-width: 130px;
+    justify-content: space-between;
+  }
+
+  .date-picker-btn:hover, .date-picker-btn.open {
+    border-color: var(--accent);
+    color: var(--accent);
+  }
+
+  .dp-arrow { font-size: 10px; opacity: 0.6; }
+
+  .date-picker-dropdown {
+    position: absolute;
+    top: calc(100% + 6px);
+    left: 0;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    box-shadow: 0 4px 20px rgba(0,33,92,0.12);
+    z-index: 200;
+    min-width: 180px;
+    overflow: hidden;
+  }
+
+  .dp-presets {
+    display: flex;
+    flex-direction: column;
+    padding: 6px;
+    gap: 2px;
+  }
+
+  .dp-preset {
+    padding: 7px 12px;
+    border: none;
+    background: transparent;
+    color: var(--text-muted);
+    font-size: 12px;
+    font-family: 'Inter', sans-serif;
+    cursor: pointer;
+    text-align: left;
+    border-radius: 6px;
+    transition: all 0.1s;
+    font-weight: 500;
+  }
+
+  .dp-preset:hover { background: var(--bg); color: var(--text); }
+  .dp-preset.active { background: var(--accent-glow); color: var(--accent); font-weight: 600; }
+
+  .dp-custom {
+    border-top: 1px solid var(--border);
+    padding: 10px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  .dp-custom-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .dp-custom-row label {
+    font-size: 11px;
+    font-weight: 600;
+    color: var(--text-muted);
+    width: 28px;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+  }
+
+  .dp-custom-row input[type="date"] {
+    flex: 1;
+    padding: 4px 8px;
+    border: 1px solid var(--border);
+    border-radius: 5px;
+    background: var(--bg);
+    color: var(--text);
+    font-size: 12px;
+    font-family: var(--mono);
+    outline: none;
+  }
+
+  .dp-custom-row input[type="date"]:focus { border-color: var(--accent); }
+
 </style>
 </head>
 <body>
@@ -432,9 +535,34 @@
     <button class="filter-btn" onclick="filterEvent('WebinarAttended', this)">Webinar Attended</button>
     <button class="filter-btn" onclick="filterEvent('PaymentScheduled', this)">Payment Scheduled</button>
     <button class="filter-btn" onclick="filterEvent('Purchase', this)">Purchase</button>
-    <select class="filter-select" id="monthFilter" onchange="applyFilters()">
-      <option value="all">All months</option>
-    </select>
+    <div class="date-picker-wrap" id="datePickerWrap">
+      <button class="date-picker-btn" id="datePickerBtn" onclick="toggleDatePicker(event)">
+        <span id="datePickerLabel">All time</span>
+        <span class="dp-arrow">▾</span>
+      </button>
+      <div class="date-picker-dropdown" id="datePickerDropdown" style="display:none;">
+        <div class="dp-presets">
+          <button class="dp-preset active" onclick="setPreset('all',this)">All time</button>
+          <button class="dp-preset" onclick="setPreset('today',this)">Today</button>
+          <button class="dp-preset" onclick="setPreset('yesterday',this)">Yesterday</button>
+          <button class="dp-preset" onclick="setPreset('7d',this)">Last 7 Days</button>
+          <button class="dp-preset" onclick="setPreset('30d',this)">Last 30 Days</button>
+          <button class="dp-preset" onclick="setPreset('thisMonth',this)">This Month</button>
+          <button class="dp-preset" onclick="setPreset('lastMonth',this)">Last Month</button>
+          <button class="dp-preset" onclick="setPreset('custom',this)">Custom Range</button>
+        </div>
+        <div class="dp-custom" id="dpCustom" style="display:none;">
+          <div class="dp-custom-row">
+            <label>From</label>
+            <input type="date" id="dpFrom" onchange="onCustomDate()">
+          </div>
+          <div class="dp-custom-row">
+            <label>To</label>
+            <input type="date" id="dpTo" onchange="onCustomDate()">
+          </div>
+        </div>
+      </div>
+    </div>
     <input class="filter-input" id="searchInput" placeholder="Search lead ID..." oninput="applyFilters()">
     <button class="refresh-btn" onclick="loadLogs()">↻ Refresh</button>
   </div>
@@ -548,7 +676,6 @@
       ]);
       trueTotal = total;
       allLogs = data;
-      populateMonthFilter(data);
       applyFilters();
       setConnected(true);
     } catch (e) {
@@ -558,32 +685,104 @@
     }
   }
 
-  // ── Month filter options, built from sent_at ──
-  function populateMonthFilter(data) {
-    const sel = document.getElementById("monthFilter");
-    const prevValue = sel.value || "all";
-    const months = new Set();
-    data.forEach(r => {
-      if (r.sent_at) months.add(r.sent_at.slice(0, 7)); // "YYYY-MM"
-    });
-    const sorted = Array.from(months).sort().reverse();
-    sel.innerHTML = `<option value="all">All months</option>` + sorted.map(m => {
-      const label = new Date(m + "-01").toLocaleDateString("en-IN", { month: "long", year: "numeric" });
-      return `<option value="${m}">${label}</option>`;
-    }).join("");
-    if (sorted.includes(prevValue) || prevValue === "all") sel.value = prevValue;
+  // ── Date Range Picker state ──
+  let dateRange = { preset: "all", from: null, to: null };
+
+  function toIST(dateStr, endOfDay = false) {
+    // dateStr = "YYYY-MM-DD", returns ISO string with IST offset
+    return dateStr + (endOfDay ? "T23:59:59+05:30" : "T00:00:00+05:30");
   }
 
-  // Stats — Total uses trueTotal (real DB count) when viewing all months
-  // Build month filter string for count queries
+  function setPreset(preset, btn) {
+    const now = new Date();
+    const pad = n => String(n).padStart(2, "0");
+    const fmt = d => `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}`;
+
+    document.querySelectorAll(".dp-preset").forEach(b => b.classList.remove("active"));
+    btn.classList.add("active");
+
+    const custom = document.getElementById("dpCustom");
+    custom.style.display = preset === "custom" ? "flex" : "none";
+
+    let from = null, to = null, label = "All time";
+
+    if (preset === "today") {
+      from = to = fmt(now); label = "Today";
+    } else if (preset === "yesterday") {
+      const y = new Date(now); y.setDate(y.getDate() - 1);
+      from = to = fmt(y); label = "Yesterday";
+    } else if (preset === "7d") {
+      const s = new Date(now); s.setDate(s.getDate() - 6);
+      from = fmt(s); to = fmt(now); label = "Last 7 Days";
+    } else if (preset === "30d") {
+      const s = new Date(now); s.setDate(s.getDate() - 29);
+      from = fmt(s); to = fmt(now); label = "Last 30 Days";
+    } else if (preset === "thisMonth") {
+      from = fmt(new Date(now.getFullYear(), now.getMonth(), 1));
+      to = fmt(now);
+      label = now.toLocaleDateString("en-IN", { month: "long", year: "numeric" });
+    } else if (preset === "lastMonth") {
+      const lm = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+      const lme = new Date(now.getFullYear(), now.getMonth(), 0);
+      from = fmt(lm); to = fmt(lme);
+      label = lm.toLocaleDateString("en-IN", { month: "long", year: "numeric" });
+    } else if (preset === "custom") {
+      // keep existing custom values, don't close
+      dateRange = { preset, from: dateRange.from, to: dateRange.to };
+      label = buildCustomLabel();
+      document.getElementById("datePickerLabel").textContent = label;
+      return;
+    }
+
+    dateRange = { preset, from, to };
+    document.getElementById("datePickerLabel").textContent = label;
+    if (preset !== "custom") closeDatePicker();
+    applyFilters();
+  }
+
+  function buildCustomLabel() {
+    const { from, to } = dateRange;
+    if (!from && !to) return "Custom Range";
+    if (from && to && from === to) return from;
+    if (from && to) return `${from} → ${to}`;
+    if (from) return `From ${from}`;
+    return `Until ${to}`;
+  }
+
+  function onCustomDate() {
+    dateRange.from = document.getElementById("dpFrom").value || null;
+    dateRange.to   = document.getElementById("dpTo").value   || null;
+    dateRange.preset = "custom";
+    document.getElementById("datePickerLabel").textContent = buildCustomLabel();
+    if (dateRange.from || dateRange.to) applyFilters();
+  }
+
+  function toggleDatePicker(e) {
+    e.stopPropagation();
+    const dd  = document.getElementById("datePickerDropdown");
+    const btn = document.getElementById("datePickerBtn");
+    const open = dd.style.display !== "none";
+    dd.style.display = open ? "none" : "block";
+    btn.classList.toggle("open", !open);
+  }
+
+  function closeDatePicker() {
+    document.getElementById("datePickerDropdown").style.display = "none";
+    document.getElementById("datePickerBtn").classList.remove("open");
+  }
+
+  document.addEventListener("click", (e) => {
+    if (!document.getElementById("datePickerWrap").contains(e.target)) closeDatePicker();
+  });
+
+  // Build Supabase filter string from current dateRange
   function monthFilter() {
-    const month = document.getElementById("monthFilter").value;
-    if (month === "all") return "";
-    const monthStart = month + "-01T00:00:00+05:30";
-    const nextMonth = new Date(month + "-01");
-    nextMonth.setMonth(nextMonth.getMonth() + 1);
-    const monthEnd = nextMonth.toISOString().slice(0,7) + "-01T00:00:00+05:30";
-    return `&sent_at=gte.${encodeURIComponent(monthStart)}&sent_at=lt.${encodeURIComponent(monthEnd)}`;
+    const { from, to } = dateRange;
+    if (!from && !to) return "";
+    let filter = "";
+    if (from) filter += `&sent_at=gte.${encodeURIComponent(toIST(from))}`;
+    if (to)   filter += `&sent_at=lte.${encodeURIComponent(toIST(to, true))}`;
+    return filter;
   }
 
   async function updateStats(data) {
@@ -641,14 +840,18 @@
 
   async function applyFilters() {
     const search = document.getElementById("searchInput").value.trim().toLowerCase();
-    const month  = document.getElementById("monthFilter").value;
 
     filtered = allLogs.filter(r => {
       const displayName = displayEventName(r.event_name);
       const matchEvent  = activeFilter === "all" || displayName === activeFilter;
       const matchSearch = !search || r.lead_id?.toLowerCase().includes(search);
-      const matchMonth  = month === "all" || r.sent_at?.slice(0, 7) === month;
-      return matchEvent && matchSearch && matchMonth;
+      let matchDate = true;
+      if (r.sent_at && (dateRange.from || dateRange.to)) {
+        const rowDate = r.sent_at.slice(0, 10); // "YYYY-MM-DD"
+        if (dateRange.from && rowDate < dateRange.from) matchDate = false;
+        if (dateRange.to   && rowDate > dateRange.to)   matchDate = false;
+      }
+      return matchEvent && matchSearch && matchDate;
     });
 
     await updateStats(filtered);
